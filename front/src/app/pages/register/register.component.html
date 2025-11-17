@@ -1,0 +1,148 @@
+<div class="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+  <div class="w-full max-w-2xl bg-white shadow-xl rounded-xl p-8 border border-gray-200">
+    <div class="flex flex-col items-center mb-6">
+      <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center mb-2">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M5.121 17.804A13.939 13.939 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 12a9 9 0 11-18 0 9 9 0 0118 0z">
+          </path>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-gray-800">Registro Comunitario</h1>
+      <p class="text-sm text-gray-500 mt-1">Completa tus datos para crear una cuenta</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-6" novalidate>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Cédula</label>
+          <input
+            class="w-full mt-1 border border-gray-300 p-3 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            formControlName="cedula" placeholder="0102030405" />
+          <small class="text-red-600 mt-1 block" *ngIf="f.cedula.touched && f.cedula.invalid">Requerido</small>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Nombre</label>
+          <input
+            class="w-full mt-1 border border-gray-300 p-3 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            formControlName="name" placeholder="John" />
+          <small class="text-red-600 mt-1 block" *ngIf="f.name.touched && f.name.invalid">Requerido</small>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Apellido</label>
+          <input
+            class="w-full mt-1 border border-gray-300 p-3 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            formControlName="lastName" placeholder="Doe" />
+          <small class="text-red-600 mt-1 block" *ngIf="f.lastName.touched && f.lastName.invalid">Requerido</small>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Email</label>
+          <input
+            class="w-full mt-1 border border-gray-300 p-3 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            formControlName="email" type="email" placeholder="john@example.com" />
+          <small class="text-red-600 mt-1 block" *ngIf="f.email.touched && f.email.invalid">Email inválido</small>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+          <input
+            class="w-full mt-1 border border-gray-300 p-3 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            formControlName="password" type="password" />
+          <small class="text-red-600 mt-1 block" *ngIf="f.password.touched && f.password.invalid">Mínimo 6
+            caracteres</small>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Confirmar contraseña</label>
+          <input
+            class="w-full mt-1 border border-gray-300 p-3 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            formControlName="confirmPassword" type="password" />
+          <small class="text-red-600 mt-1 block"
+            *ngIf="form.errors?.['passwordsMismatch'] && (f.confirmPassword.touched || f.password.touched)">No
+            coincide</small>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Dirección</label>
+        <input
+          class="w-full mt-1 border border-gray-300 p-3 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          formControlName="address" placeholder="Calle 123" />
+        <small class="text-red-600 mt-1 block" *ngIf="f.address.touched && f.address.invalid">Requerido</small>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Foto de perfil (Imagen, máx 2MB)</label>
+        <div class="flex items-center space-x-4">
+          <div
+            class="w-24 h-24 rounded-full border border-gray-300 bg-gray-100 flex items-center justify-center overflow-hidden">
+            <ng-container *ngIf="imagePreview; else noImage">
+              <img [src]="imagePreview" alt="Previsualización de perfil" class="w-full h-full object-cover">
+            </ng-container>
+            <ng-template #noImage>
+              <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+              </svg>
+            </ng-template>
+          </div>
+          <div>
+            <input #fileInputEl type="file" accept="image/*" (change)="onFileChange(fileInputEl)" class="block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-full file:border-0
+              file:text-sm file:font-semibold
+              file:bg-blue-50 file:text-blue-700
+              hover:file:bg-blue-100
+            " />
+            <small class="text-gray-600 mt-2 block" *ngIf="selectedFile">{{ selectedFile.name }}</small>
+            <small class="text-gray-500 mt-1 block" *ngIf="!selectedFile">Ningún archivo seleccionado</small>
+            <small class="text-red-600 mt-1 block" *ngIf="imageError">{{ imageError }}</small>
+          </div>
+        </div>
+      </div>
+      <div class="pt-4">
+        <button
+          class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:bg-blue-400 shadow-md"
+          [disabled]="loading || form.invalid" type="submit">
+          {{ loading ? 'Registrando...' : 'Registrar' }}
+        </button>
+      </div>
+
+      <div class="flex justify-center mt-4">
+        <span class="text-green-700 text-sm" *ngIf="successMsg">{{ successMsg }}</span>
+        <span class="text-red-700 text-sm" *ngIf="errorMsg">{{ errorMsg }}</span>
+      </div>
+
+      <div class="relative flex items-center pt-4">
+        <div class="flex-grow border-t border-gray-300"></div>
+        <span class="flex-shrink mx-4 text-sm text-gray-500">o regístrate con</span>
+        <div class="flex-grow border-t border-gray-300"></div>
+      </div>
+
+      <div class="flex gap-4 justify-center">
+        <button
+          class="flex items-center justify-center w-full sm:w-1/2 px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-150">
+          <svg class="w-5 h-5 mr-3" viewBox="0 0 48 48">
+            <path fill="#EA4335"
+              d="M24 9.5c3.54 0 6.71 1.22 9.08 3.03l5.08-5.08C34.6 4.6 29.6 2 24 2 15.34 2 7.78 7.02 4.64 14.17l5.59 4.35C11.5 13.92 17.27 9.5 24 9.5z" />
+            <path fill="#4285F4"
+              d="M46.72 24.5c0-.85-.1-1.66-.27-2.45H24v4.61h12.55c-.53 2.87-2.22 5.1-4.75 6.64l4.74 3.69c2.78-2.58 4.41-6.3 4.41-10.89z" />
+            <path fill="#FBBC04"
+              d="M9.5 31.5c1.78 1.48 4.09 2.37 6.56 2.37 2.06 0 3.93-.65 5.54-1.7l5.59 4.35c-2.88 2.24-6.44 3.58-10.99 3.58-8.66 0-16.22-5.02-19.36-12.17l5.59-4.35C11.5 13.92 17.27 9.5 24 9.5z" />
+            <path fill="#34A853"
+              d="M24 46c5.82 0 10.92-1.92 14.54-5.18l-5.08-5.08C29.69 38.38 27.07 39.5 24 39.5c-4.47 0-8.23-2.91-9.59-6.95l-5.59 4.35C10.78 41.28 16.2 46 24 46z" />
+            <path fill="none" d="M0 0h48v48H0z" />
+          </svg> Google
+        </button>
+        <button
+          class="flex items-center justify-center w-full sm:w-1/2 px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-150">
+          <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#1877F2"
+              d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.505 1.492-3.899 3.777-3.899 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.247 0-1.637.779-1.637 1.562V12h2.773l-.443 2.89h-2.33V22C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z" />
+          </svg> Facebook
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,45 @@
+{
+  "name": "chat-comunitario",
+  "version": "1.0.0",
+  "description": "Proyecto de Aplicaciones web avanzadas",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node-dev --inspect=0.0.0.0:9230 --nolazy --respawn --poll src/index.ts",
+    "build": "tsc",
+    "postbuild": "sh -c 'if [ -d public ]; then mkdir -p dist && cp -r public dist/public; fi'",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "web",
+    "sockets"
+  ],
+  "author": "Jefferson Chileno",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "3.0.3",
+    "cors": "2.8.5",
+    "dotenv": "17.2.3",
+    "express": "5.1.0",
+    "jsonwebtoken": "9.0.2",
+    "morgan": "1.10.1",
+    "multer": "^1.4.5-lts.1",
+    "ws": "^8.18.3",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "3.0.0",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.5",
+    "@types/jsonwebtoken": "9.0.10",
+    "@types/morgan": "1.9.10",
+    "@types/multer": "^1.4.11",
+    "@types/ws": "^8.18.1",
+    "standard": "17.1.2",
+    "ts-node-dev": "2.0.0",
+    "typescript": "5.9.3"
+  },
+  "eslintConfig": {
+    "extends": "standard"
+  }
+}

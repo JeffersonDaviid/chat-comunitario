@@ -1,0 +1,40 @@
+<div class="min-h-[calc(100vh-64px)] p-6">
+  <header class="bg-white border rounded-lg p-4 mb-6 shadow-sm flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img *ngIf="profileUrl()" [src]="profileUrl()" alt="Perfil" class="w-10 h-10 rounded-full object-cover border" />
+      <div>
+        <h1 class="text-xl font-semibold">Dashboard</h1>
+        <p class="text-gray-600 text-sm">
+          Conectado: <strong>{{ userName || userEmail || userCedula || 'Invitado' }}</strong>
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <section class="bg-white border rounded-lg p-4 shadow-sm">
+    <h2 class="text-lg font-semibold mb-4">Mis Comunidades</h2>
+    <div *ngIf="loading" class="text-sm text-gray-500">Cargando...</div>
+    <div *ngIf="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</div>
+    <div *ngIf="!loading && communities.length === 0" class="text-sm text-gray-500">
+      No perteneces a ninguna comunidad.
+    </div>
+    <div class="space-y-4" *ngIf="communities.length > 0">
+      <div *ngFor="let c of communities" class="border rounded p-3">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h3 class="font-medium">{{ c.title }}</h3>
+            <p class="text-xs text-gray-500">{{ c.description }}</p>
+          </div>
+        </div>
+        <ul class="ml-2 space-y-1">
+          <li *ngFor="let ch of c.channels" class="flex items-center justify-between">
+            <button (click)="goChannel(c.id, ch.id)" class="text-blue-600 hover:underline text-sm">
+              # {{ ch.name }}
+            </button>
+            <span class="text-xs text-gray-400">{{ ch.description }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
