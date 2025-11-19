@@ -1,169 +1,233 @@
-// src/app/services/websocket.service.ts
 import { Injectable, OnDestroy } from '@angular/core'
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket'
 import { Observable, Subject, timer, Subscription } from 'rxjs'
 import { retryWhen, delayWhen, tap } from 'rxjs/operators'
 
+// Interfaz para el mensaje que se envía/recibe
 export interface WSMessage {
-	type?: string
-	messageType?: string
-	payload?: any
+    type?: string
+    messageType?: string
+    payload?: any
 }
 
+// Interfaz para los parámetros de conexión
 export interface WSConnectParams {
-	communityId: string
-	cedula: string
-	channelId?: string
+    communityId: string
+    cedula: string
+    channelId?: string
 }
 
 @Injectable({
-	providedIn: 'root',
+    providedIn: 'root',
 })
 export class WebsocketService implements OnDestroy {
-	private WS_BASE = 'ws://localhost:3000/ws'
-	private socket$?: WebSocketSubject<WSMessage>
-	private connectionStatus$ = new Subject<boolean>()
-	private incoming$ = new Subject<WSMessage>()
-	private reconnectInterval = 3000
-	private manualClose = false
-	private sub?: Subscription
-	private lastParams?: WSConnectParams
+    // Base URL for the WebSocket connection
+    private WS_BASE = 'ws://localhost:3000/ws'
+    private socket$?: WebSocketSubject<WSMessage>
+    private connectionStatus$ = new Subject<boolean>() // To notify connection status
+    private incoming$ = new Subject<WSMessage>() // To emit incoming messages
+    private reconnectInterval = 3000
+    private manualClose = false // Flag to differentiate manual close from disconnection
+    private sub?: Subscription // Active subscription to the socket
+    private lastParams?: WSConnectParams // Last parameters used for reconnection
 
-	public messages$(): Observable<WSMessage> {
-		return this.incoming$.asObservable()
-	}
+    // Exposes incoming messages as an Observable
+    public messages$(): Observable<WSMessage> {
+        return this.incoming$.asObservable()
+    }
 
-	public status$(): Observable<boolean> {
-		return this.connectionStatus$.asObservable()
-	}
+    // Exposes the connection status as an Observable
+    public status$(): Observable<boolean> {
+        return this.connectionStatus$.asObservable()
+    }
 
-	constructor() {
-		// Auto-conectar si existen parámetros guardados
-		const cid = localStorage.getItem('communityId') || undefined
-		const ced = localStorage.getItem('cedula') || undefined
-		if (cid && ced) {
-			this.connect({ communityId: cid, cedula: ced })
-		}
-	}
+    constructor() {
+        // Auto-connect logic upon service initialization (if saved data exists)
+        const cid = localStorage.getItem('communityId') || undefined
+        const ced = localStorage.getItem('cedula') || undefined
+        if (cid && ced) {
+            this.connect({ communityId: cid, cedula: ced })
+        }
+    }
 
-	public connect(params: WSConnectParams) {
-		this.manualClose = false
-		this.lastParams = params
-		const url = this.buildUrl(params)
-		this.socket$ = webSocket<WSMessage>({
-			url,
-			openObserver: {
-				next: () => {
-					console.log('[WS] Connected')
-					this.connectionStatus$.next(true)
-				},
-			},
-			closeObserver: {
-				next: () => {
-					console.log('[WS] Disconnected')
-					this.connectionStatus$.next(false)
-					if (!this.manualClose) this.tryReconnect()
-				},
-			},
-		})
+    /**
+     * Establishes a new WebSocket connection.
+     * CRITICAL FIX: If a connection already exists, it is closed and unsubscribed
+     * to prevent message duplication errors.
+     */
+    public connect(params: WSConnectParams) {
+        // FIX 1: Close and unsubscribe previous connections before creating a new one.
+        if (this.socket$ || this.sub) {
+            console.log('[WS] Cerrando conexión y suscripción existentes antes de una nueva llamada a connect().')
+            this.close() // Unsubscribes and completes the socket
+        }
 
-		this.sub = this.socket$
-			.pipe(
-				retryWhen((errors) =>
-					errors.pipe(
-						tap((err) => {
-							console.warn('[WS] socket error', err)
-							this.connectionStatus$.next(false)
-						}),
-						delayWhen(() => timer(this.reconnectInterval))
-					)
-				)
-			)
-			.subscribe(
-				(msg: any) => {
-					// Normalizar estructura: el backend envía { data, timestamp, ... }
-					const normalized: WSMessage = {
-						type: msg?.type,
-						messageType: msg?.messageType,
-						payload: msg?.payload ?? msg?.data ?? msg,
-					}
-					// Mapear timestamp ISO a payload.ts num si existe
-					const iso = msg?.timestamp || msg?.payload?.timestamp || msg?.data?.timestamp
-					if (iso && typeof normalized.payload === 'object' && normalized.payload) {
-						;(normalized.payload as any).ts = Date.parse(iso)
-					}
-					this.incoming$.next(normalized)
-				},
-				(err) => {
-					console.error('[WS] subscription error', err)
-				}
-			)
-	}
+        this.manualClose = false
+        this.lastParams = params
+        const url = this.buildUrl(params)
+        
+        // 1. Create the new WebSocketSubject connection
+        this.socket$ = webSocket<WSMessage>({
+            url,
+            // Open Observer
+            openObserver: {
+                next: () => {
+                    console.log('[WS] Conectado')
+                    this.connectionStatus$.next(true)
+                },
+            },
+            // Close Observer
+            closeObserver: {
+                next: () => {
+                    console.log('[WS] Desconectado')
+                    this.connectionStatus$.next(false)
+                    // Attempt to reconnect only if it wasn't a manual close
+                    if (!this.manualClose) this.tryReconnect()
+                },
+            },
+        })
 
-	private tryReconnect() {
-		setTimeout(() => {
-			if (!this.manualClose && this.lastParams) {
-				this.connect(this.lastParams)
-			}
-		}, this.reconnectInterval)
-	}
+        // 2. Subscribe to the new connection
+        this.sub = this.socket$
+            .pipe(
+                // Reconnection logic with simple exponential delay
+                retryWhen((errors) =>
+                    errors.pipe(
+                        tap((err) => {
+                            console.warn('[WS] Error de socket. Reintentando conexión...', err)
+                            this.connectionStatus$.next(false)
+                        }),
+                        delayWhen(() => timer(this.reconnectInterval))
+                    )
+                )
+            )
+            .subscribe(
+                (msg: any) => {
+                    // Get the raw payload (can be an object or a plain string)
+                    let rawPayload = msg?.payload ?? msg?.data ?? msg
+                    
+                    // FIX 2 (Normalization): If the raw payload is a string (pure chat message), 
+                    // wrap it into a { text: string } object for the ChatComponent to read.
+                    if (typeof rawPayload === 'string') {
+                        rawPayload = { text: rawPayload }
+                        msg.type = msg.type || 'chat' // Assume it's a chat message if it's just text
+                    }
 
-	private buildUrl(params: WSConnectParams): string {
-		const qs = new URLSearchParams({
-			communityId: params.communityId,
-			cedula: params.cedula,
-		})
-		if (params.channelId) qs.set('channelId', params.channelId)
-		return `${this.WS_BASE}?${qs.toString()}`
-	}
+                    // Normalize the structure of the received message
+                    const normalized: WSMessage = {
+                        type: msg?.type,
+                        messageType: msg?.messageType,
+                        payload: rawPayload,
+                    }
+                    
+                    // Map ISO timestamp to payload.ts number if it exists
+                    const iso = msg?.timestamp || msg?.payload?.timestamp || msg?.data?.timestamp
+                    if (iso && typeof normalized.payload === 'object' && normalized.payload) {
+                        ;(normalized.payload as any).ts = Date.parse(iso)
+                    }
+                    
+                    // Emit the normalized message to the service subscribers
+                    this.incoming$.next(normalized)
+                },
+                (err) => {
+                    console.error('[WS] Error de suscripción', err)
+                }
+            )
+    }
 
-	public setIdentity(params: WSConnectParams, reconnect = true) {
-		this.lastParams = params
-		localStorage.setItem('communityId', params.communityId)
-		localStorage.setItem('cedula', params.cedula)
-		if (reconnect) {
-			this.close()
-			this.connect(params)
-		}
-	}
+    /**
+     * Attempts to reconnect after a timeout.
+     */
+    private tryReconnect() {
+        setTimeout(() => {
+            if (!this.manualClose && this.lastParams) {
+                console.log('[WS] Reintentando conexión...')
+                this.connect(this.lastParams)
+            }
+        }, this.reconnectInterval)
+    }
 
-	public send(msg: WSMessage) {
-		try {
-			if (this.socket$) {
-				this.socket$.next(msg)
-			} else {
-				console.warn('[WS] socket not ready')
-			}
-		} catch (e) {
-			console.error('[WS] send error', e)
-		}
-	}
+    /**
+     * Builds the WebSocket URL with connection parameters.
+     */
+    private buildUrl(params: WSConnectParams): string {
+        const qs = new URLSearchParams({
+            communityId: params.communityId,
+            cedula: params.cedula,
+        })
+        if (params.channelId) qs.set('channelId', params.channelId)
+        return `${this.WS_BASE}?${qs.toString()}`
+    }
 
-	public sendText(text: string) {
-		const payload: WSMessage = { type: 'chat', payload: { text, ts: Date.now() } }
-		this.send(payload)
-	}
+    /**
+     * Sets the user identity and reconnects if necessary.
+     */
+    public setIdentity(params: WSConnectParams, reconnect = true) {
+        this.lastParams = params
+        localStorage.setItem('communityId', params.communityId)
+        localStorage.setItem('cedula', params.cedula)
+        if (reconnect) {
+            this.close()
+            this.connect(params)
+        }
+    }
 
-	public sendChannelMessage(channelId: string, text: string) {
-		const payload: WSMessage = {
-			type: 'chat',
-			payload: { text, ts: Date.now(), channelId },
-		}
-		this.send(payload)
-	}
+    /**
+     * Sends a message through the WebSocket.
+     */
+    public send(msg: WSMessage) {
+        try {
+            if (this.socket$) {
+                this.socket$.next(msg)
+            } else {
+                console.warn('[WS] Socket no está listo. No se pudo enviar el mensaje.')
+            }
+        } catch (e) {
+            console.error('[WS] Error al enviar mensaje', e)
+        }
+    }
 
-	public close() {
-		this.manualClose = true
-		if (this.socket$) {
-			this.socket$.complete()
-		}
-		this.connectionStatus$.next(false)
-		if (this.sub) this.sub.unsubscribe()
-	}
+    /**
+     * Convenience function to send a simple text message.
+     */
+    public sendText(text: string) {
+        const payload: WSMessage = { type: 'chat', payload: { text, ts: Date.now() } }
+        this.send(payload)
+    }
 
-	ngOnDestroy(): void {
-		this.close()
-		this.incoming$.complete()
-		this.connectionStatus$.complete()
-	}
+    /**
+     * Convenience function to send a message to a specific channel.
+     */
+    public sendChannelMessage(channelId: string, text: string) {
+        const payload: WSMessage = {
+            type: 'chat',
+            payload: { text, ts: Date.now(), channelId },
+        }
+        this.send(payload)
+    }
+
+    /**
+     * Closes the WebSocket connection and unsubscribes the Observable.
+     */
+    public close() {
+        this.manualClose = true // Prevents automatic reconnection
+        if (this.socket$) {
+            this.socket$.complete() // Closes the WS connection
+            this.socket$ = undefined // Clears the reference
+        }
+        this.connectionStatus$.next(false)
+        if (this.sub) {
+            this.sub.unsubscribe() // Unsubscribes the message handler
+            this.sub = undefined // Clears the reference
+        }
+    }
+
+    /**
+     * Ensures the connection is closed and Subjects are completed when the service is destroyed.
+     */
+    ngOnDestroy(): void {
+        this.close()
+        this.incoming$.complete()
+        this.connectionStatus$.complete()
+    }
 }
