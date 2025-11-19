@@ -1,0 +1,19 @@
+/* Sidebar Hover Effect - Like Slack */
+aside {
+  will-change: width;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mostrar texto cuando el sidebar está expandido */
+aside:hover .hidden {
+  display: inline !important;
+}
+
+/* Asegurar que el contenido se vea bien */
+aside .overflow-hidden {
+  transition: overflow 0.3s ease;
+}
+
+aside:hover .overflow-hidden {
+  overflow-y: auto;
+}

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Global Styles */
 * {
 	box-sizing: border-box;
@@ -11,9 +15,10 @@ body {
 	background-color: #f8f9fa;
 }
 
-/* Scrollbar Styles */
+/* Scrollbar Styles - Custom design */
 ::-webkit-scrollbar {
 	width: 8px;
+	height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -22,18 +27,49 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-	background: #c1c1c1;
+	background: #cbd5e0;
 	border-radius: 4px;
+	transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background: #a8a8a8;
+	background: #a0aec0;
 }
 
-/* Focus styles */
+/* Custom scrollbar class */
+.custom-scrollbar::-webkit-scrollbar {
+	width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+	background: #cbd5e0;
+	border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: #a0aec0;
+}
+
+/* Focus styles - Modern */
 *:focus {
 	outline: none;
-	box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+button:focus {
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+input:focus {
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+textarea:focus {
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* Smooth transitions for all interactive elements */
@@ -41,4 +77,44 @@ button,
 input,
 textarea {
 	transition: all 0.2s ease;
+}
+
+/* Selection styles */
+::selection {
+	background-color: #3b82f6;
+	color: #ffffff;
+}
+
+/* Utility: smooth scroll */
+.scroll-smooth {
+	scroll-behavior: smooth;
+}
+
+/* Animations */
+@keyframes slideInUp {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.animate-slideInUp {
+	animation: slideInUp 0.3s ease-out;
+}
+
+.animate-fadeIn {
+	animation: fadeIn 0.3s ease-out;
 }

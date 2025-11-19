@@ -1,1 +1,91 @@
-<p>home works!</p>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  <!-- Hero Section -->
+  <section class="px-4 py-20 md:py-32 max-w-6xl mx-auto">
+    <div class="text-center mb-12">
+      <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+        Conecta con tu <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">comunidad</span>
+      </h1>
+      <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+        Una plataforma moderna para comunicación comunitaria en tiempo real. Crea, comparte y colabora con tu comunidad de forma segura.
+      </p>
+      <div class="flex gap-4 justify-center">
+        <a 
+          routerLink="/login"
+          class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all hover:shadow-xl">
+          Comenzar ahora
+        </a>
+      </div>
+    </div>
+
+    <!-- Feature Cards -->
+    <div class="grid md:grid-cols-3 gap-8 mt-20">
+      <!-- Card 1 -->
+      <div class="bg-white rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow border border-gray-200">
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m0 0v2m0-6h6m0 0h-6m6 0h2m-2 0a2 2 0 100 4m0-4a2 2 0 110 4m-6-4a2 2 0 100 4m0-4a2 2 0 110 4"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Canales Organizados</h3>
+        <p class="text-gray-600">Organiza conversaciones por temas con canales dedicados. Mantén todo ordenado y fácil de encontrar.</p>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-white rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow border border-gray-200">
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Comunicación en Tiempo Real</h3>
+        <p class="text-gray-600">Mensajes instantáneos con WebSocket. Conecta con tu comunidad sin retrasos.</p>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-white rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow border border-gray-200">
+        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Seguridad Garantizada</h3>
+        <p class="text-gray-600">Tus datos están protegidos. Autenticación segura y privacidad garantizada.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="bg-white border-t border-b border-gray-200 py-16">
+    <div class="max-w-6xl mx-auto px-4 grid md:grid-cols-4 gap-8 text-center">
+      <div>
+        <div class="text-4xl font-bold text-blue-600 mb-2">1000+</div>
+        <p class="text-gray-600">Usuarios activos</p>
+      </div>
+      <div>
+        <div class="text-4xl font-bold text-blue-600 mb-2">500+</div>
+        <p class="text-gray-600">Comunidades</p>
+      </div>
+      <div>
+        <div class="text-4xl font-bold text-blue-600 mb-2">50K+</div>
+        <p class="text-gray-600">Mensajes diarios</p>
+      </div>
+      <div>
+        <div class="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
+        <p class="text-gray-600">Disponibilidad</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="px-4 py-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-center">
+    <div class="max-w-2xl mx-auto">
+      <h2 class="text-4xl font-bold mb-6">¿Listo para conectar?</h2>
+      <p class="text-xl mb-8 opacity-90">Únete a miles de usuarios que ya están compartiendo y colaborando en su comunidad.</p>
+      <a 
+        routerLink="/register"
+        class="inline-block px-8 py-4 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors">
+        Registrarse ahora - Es gratis
+      </a>
+    </div>
+  </section>
+</div>

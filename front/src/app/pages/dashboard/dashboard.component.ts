@@ -17,6 +17,9 @@ export class DashboardComponent implements OnInit {
 	userEmail = ''
 	userCedula = ''
 	userProfileImg = ''
+	sidebarExpanded = false
+	sidebarHovered = false
+	sidebarPinned = false
 	communities: Array<{
 		id: string
 		title: string
@@ -69,5 +72,80 @@ export class DashboardComponent implements OnInit {
 
 	goChannel(commId: string, channelId: string) {
 		this.router.navigate(['/chat', commId, channelId])
+	}
+
+	// Sidebar actions
+	addNewCommunity() {
+		console.log('Agregar nueva comunidad')
+		// TODO: Implementar modal para crear comunidad
+	}
+
+	sendNewMessage() {
+		console.log('Enviar nuevo mensaje')
+		// TODO: Implementar modal para enviar mensaje
+	}
+
+	createNewChannel() {
+		console.log('Crear nuevo canal')
+		// TODO: Implementar modal para crear canal
+	}
+
+	goHome() {
+		this.router.navigateByUrl('/')
+	}
+
+	viewContacts() {
+		console.log('Ver contactos')
+		// TODO: Implementar vista de contactos
+	}
+
+	viewSaved() {
+		console.log('Ver guardados')
+		// TODO: Implementar vista de mensajes guardados
+	}
+
+	viewHistory() {
+		console.log('Ver historial')
+		// TODO: Implementar vista de historial
+	}
+
+	openSettings() {
+		console.log('Abrir configuración')
+		// TODO: Implementar panel de configuración
+	}
+
+	logout() {
+		localStorage.removeItem('auth_token')
+		localStorage.removeItem('user')
+		localStorage.removeItem('cedula')
+		localStorage.removeItem('communityId')
+		this.router.navigateByUrl('/login')
+	}
+
+	toggleSidebar() {
+		this.sidebarExpanded = !this.sidebarExpanded
+	}
+
+	expandSidebar() {
+		if (!this.sidebarPinned) {
+			this.sidebarHovered = true
+			this.sidebarExpanded = true
+		}
+	}
+
+	collapseSidebar() {
+		if (!this.sidebarPinned) {
+			this.sidebarHovered = false
+			this.sidebarExpanded = false
+		}
+	}
+
+	toggleSidebarPin() {
+		this.sidebarPinned = !this.sidebarPinned
+		if (this.sidebarPinned) {
+			this.sidebarExpanded = true
+		} else {
+			this.sidebarExpanded = false
+		}
 	}
 }

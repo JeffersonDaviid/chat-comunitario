@@ -1,40 +1,203 @@
-<div class="min-h-[calc(100vh-64px)] p-6">
-  <header class="bg-white border rounded-lg p-4 mb-6 shadow-sm flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <img *ngIf="profileUrl()" [src]="profileUrl()" alt="Perfil" class="w-10 h-10 rounded-full object-cover border" />
+<div class="h-screen flex flex-col bg-gray-50">
+  <!-- Header con Perfil -->
+  <header class="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
+    <div class="flex items-center gap-4">
+      <img *ngIf="profileUrl()" [src]="profileUrl()" alt="Perfil" class="w-16 h-16 rounded-lg object-cover border-2 border-gray-200" />
+      <div *ngIf="!profileUrl()" class="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl border-2 border-gray-200">
+        {{ (userName || userEmail || 'U').charAt(0).toUpperCase() }}
+      </div>
       <div>
-        <h1 class="text-xl font-semibold">Dashboard</h1>
-        <p class="text-gray-600 text-sm">
-          Conectado: <strong>{{ userName || userEmail || userCedula || 'Invitado' }}</strong>
-        </p>
+        <h1 class="text-3xl font-bold text-gray-900">{{ userName || userEmail || 'Usuario' }}</h1>
+        <p class="text-gray-600 text-sm">{{ userEmail }}</p>
+        <p class="text-gray-500 text-xs mt-1">Cédula: {{ userCedula }}</p>
       </div>
     </div>
   </header>
 
-  <section class="bg-white border rounded-lg p-4 shadow-sm">
-    <h2 class="text-lg font-semibold mb-4">Mis Comunidades</h2>
-    <div *ngIf="loading" class="text-sm text-gray-500">Cargando...</div>
-    <div *ngIf="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</div>
-    <div *ngIf="!loading && communities.length === 0" class="text-sm text-gray-500">
-      No perteneces a ninguna comunidad.
-    </div>
-    <div class="space-y-4" *ngIf="communities.length > 0">
-      <div *ngFor="let c of communities" class="border rounded p-3">
-        <div class="flex items-center justify-between mb-2">
-          <div>
-            <h3 class="font-medium">{{ c.title }}</h3>
-            <p class="text-xs text-gray-500">{{ c.description }}</p>
+  <!-- Main Content with Sidebar -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside 
+      [ngClass]="sidebarExpanded ? 'w-56' : 'w-20'"
+      class="bg-white border-r border-gray-200 flex flex-col shadow-sm transition-all duration-300 overflow-hidden"
+      (mouseenter)="expandSidebar()"
+      (mouseleave)="collapseSidebar()">
+      
+      <!-- Sidebar Header with Pin Button -->
+      <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900 whitespace-nowrap" [class.hidden]="!sidebarExpanded">Menú</h2>
+        <button 
+          (click)="toggleSidebarPin()"
+          [title]="sidebarPinned ? 'Desanclar' : 'Anclar'"
+          class="text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path 
+              *ngIf="!sidebarPinned"
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              stroke-width="2" 
+              d="M9 5l7 7-7 7"></path>
+            <path 
+              *ngIf="sidebarPinned"
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              stroke-width="2" 
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 9m0 0l-4 4m4-4l4 4"></path>
+          </svg>
+        </button>
+      </div>
+        
+        <!-- Primary Action Buttons (Minimal) -->
+        <div class="space-y-2 px-4 pb-6">
+          <button (click)="addNewCommunity()" title="Nueva Comunidad" class="w-full flex items-center justify-start gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Comunidad</span>
+          </button>
+          
+          <button (click)="sendNewMessage()" title="Nuevo Mensaje" class="w-full flex items-center justify-start gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+            <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Mensaje</span>
+          </button>
+
+          <button (click)="createNewChannel()" title="Nuevo Canal" class="w-full flex items-center justify-start gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Canal</span>
+          </button>
+        </div>
+
+      <!-- Sidebar Menu Items -->
+      <nav class="flex-1 px-2 py-6 space-y-1 overflow-y-auto">
+        <button (click)="goHome()" title="Inicio" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm">
+          <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9m-9 11l4-4"></path>
+          </svg>
+          <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Inicio</span>
+        </button>
+
+        <button (click)="viewContacts()" title="Contactos" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm">
+          <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.488M15 6a3 3 0 11-6 0 3 3 0 016 0zM6 20h12a3 3 0 003-3V7a3 3 0 00-3-3H6a3 3 0 00-3 3v10a3 3 0 003 3z"></path>
+          </svg>
+          <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Contactos</span>
+        </button>
+
+        <button (click)="viewSaved()" title="Guardados" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm">
+          <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h6a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V5z"></path>
+          </svg>
+          <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Guardados</span>
+        </button>
+
+        <button (click)="viewHistory()" title="Historial" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm">
+          <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Historial</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="px-2 py-4 border-t border-gray-200 space-y-1">
+        <button (click)="openSettings()" title="Configuración" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm">
+          <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Configuración</span>
+        </button>
+
+        <button (click)="logout()" title="Cerrar sesión" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors font-medium text-sm">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+          </svg>
+          <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Salir</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto">
+      <div class="max-w-6xl mx-auto px-8 py-8">
+        <!-- Title Section -->
+        <div class="mb-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Mis Comunidades</h2>
+          <p class="text-gray-600">Accede a tus comunidades y participa en las conversaciones</p>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="loading" class="flex items-center justify-center py-12">
+          <div class="text-center">
+            <div class="animate-spin w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
+            <p class="text-gray-600">Cargando comunidades...</p>
           </div>
         </div>
-        <ul class="ml-2 space-y-1">
-          <li *ngFor="let ch of c.channels" class="flex items-center justify-between">
-            <button (click)="goChannel(c.id, ch.id)" class="text-blue-600 hover:underline text-sm">
-              # {{ ch.name }}
-            </button>
-            <span class="text-xs text-gray-400">{{ ch.description }}</span>
-          </li>
-        </ul>
+
+        <!-- Error State -->
+        <div *ngIf="errorMsg && !loading" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p class="text-red-800 font-medium">{{ errorMsg }}</p>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!loading && communities.length === 0 && !errorMsg" class="bg-white rounded-lg p-12 text-center border border-gray-200">
+          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">No hay comunidades</h3>
+          <p class="text-gray-600">Aún no perteneces a ninguna comunidad. Contacta con un administrador para unirte.</p>
+        </div>
+
+        <!-- Communities Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" *ngIf="!loading && communities.length > 0">
+          <div *ngFor="let c of communities" class="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden">
+            
+            <!-- Community Header -->
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-32"></div>
+
+            <!-- Community Info -->
+            <div class="px-6 pb-6">
+              <div class="flex items-start justify-between mb-4 -mt-8 relative z-10">
+                <div class="w-16 h-16 bg-white rounded-lg border-4 border-white shadow-md flex items-center justify-center text-2xl font-bold text-blue-600">
+                  {{ c.title.charAt(0).toUpperCase() }}
+                </div>
+              </div>
+
+              <h3 class="text-xl font-bold text-gray-900 mb-1">{{ c.title }}</h3>
+              <p class="text-gray-600 text-sm mb-4">{{ c.description }}</p>
+
+              <!-- Channels List -->
+              <div class="space-y-2">
+                <p class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Canales ({{ c.channels.length }})</p>
+                <div *ngIf="c.channels && c.channels.length > 0" class="space-y-2">
+                  <button 
+                    *ngFor="let ch of c.channels"
+                    (click)="goChannel(c.id, ch.id)"
+                    class="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-blue-50 transition-colors group text-left">
+                    <span class="text-gray-400 font-semibold">#</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ ch.name }}</p>
+                      <p class="text-xs text-gray-500 truncate">{{ ch.description }}</p>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div *ngIf="!c.channels || c.channels.length === 0" class="text-sm text-gray-500 italic py-2">
+                  Sin canales disponibles
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </section>
+  </div>
 </div>
