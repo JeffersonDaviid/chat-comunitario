@@ -1,19 +1,4 @@
 <div class="h-screen flex flex-col bg-gray-50">
-  <!-- Header con Perfil -->
-  <header class="bg-white border-b border-gray-200 px-8 py-6 shadow-sm">
-    <div class="flex items-center gap-4">
-      <img *ngIf="profileUrl()" [src]="profileUrl()" alt="Perfil" class="w-16 h-16 rounded-lg object-cover border-2 border-gray-200" />
-      <div *ngIf="!profileUrl()" class="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl border-2 border-gray-200">
-        {{ (userName || userEmail || 'U').charAt(0).toUpperCase() }}
-      </div>
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900">{{ userName || userEmail || 'Usuario' }}</h1>
-        <p class="text-gray-600 text-sm">{{ userEmail }}</p>
-        <p class="text-gray-500 text-xs mt-1">Cédula: {{ userCedula }}</p>
-      </div>
-    </div>
-  </header>
-
   <!-- Main Content with Sidebar -->
   <div class="flex-1 flex overflow-hidden">
     <!-- Sidebar -->

@@ -22,9 +22,15 @@ import { WebsocketService } from './services/websocket.service'
 					<div
 						class="flex items-center gap-4"
 						*ngIf="isLogged()">
-						<div class="text-right">
-							<p class="text-sm font-medium text-gray-900">{{ currentUserName() }}</p>
-							<p class="text-xs text-gray-500">Online</p>
+						<div class="flex items-center gap-3">
+							<img *ngIf="profileUrl()" [src]="profileUrl()" alt="Perfil" class="w-10 h-10 rounded-lg object-cover border-2 border-gray-200" />
+							<div *ngIf="!profileUrl()" class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm border-2 border-gray-200">
+								{{ (currentUserName().charAt(0) || 'U').toUpperCase() }}
+							</div>
+							<div class="text-right">
+								<p class="text-sm font-medium text-gray-900">{{ currentUserName() }}</p>
+								<p class="text-xs text-gray-500">Online</p>
+							</div>
 						</div>
 						<button
 							(click)="logout()"
@@ -72,6 +78,16 @@ export class AppComponent {
 			const u = JSON.parse(raw)
 			const name = [u?.name, u?.lastName].filter(Boolean).join(' ').trim()
 			return name || u?.email || ''
+		} catch {
+			return ''
+		}
+	}
+
+	profileUrl(): string {
+		try {
+			const cedula = localStorage.getItem('cedula')
+			if (!cedula) return ''
+			return `http://localhost:3000/assets/profiles/${cedula}.jpg`
 		} catch {
 			return ''
 		}
