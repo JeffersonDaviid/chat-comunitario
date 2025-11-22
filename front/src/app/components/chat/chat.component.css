@@ -22,3 +22,40 @@
 input:focus {
     box-shadow: none;
 }
+
+/* Estilos para archivos */
+.file-preview-container {
+    display: inline-block;
+}
+
+.file-preview-container img {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.file-document-container {
+    display: inline-block;
+}
+
+.file-document-container .flex {
+    animation: slideUp 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

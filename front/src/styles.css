@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+@import '@ctrl/ngx-emoji-mart/picker';
 /* Global Styles */
 * {
 	box-sizing: border-box;

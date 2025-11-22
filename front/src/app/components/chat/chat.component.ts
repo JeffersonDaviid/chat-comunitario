@@ -5,12 +5,20 @@ import { ActivatedRoute } from '@angular/router'
 import { WebsocketService, WSMessage } from '../../services/websocket.service'
 import { Subscription } from 'rxjs'
 import { HttpClient, HttpClientModule } from '@angular/common/http'
-import { AuthService } from '../../services/auth.service' 
+import { AuthService } from '../../services/auth.service'
+import { PickerComponent } from '@ctrl/ngx-emoji-mart';
+
+
+interface FilePreview {
+    file: File
+    preview: string | ArrayBuffer | null
+    type: 'image' | 'document'
+} 
 
 @Component({
     selector: 'chat',
     standalone: true,
-    imports: [CommonModule, FormsModule, HttpClientModule],
+    imports: [CommonModule, FormsModule, HttpClientModule, PickerComponent],
     templateUrl: './chat.component.html',
     styleUrl: './chat.component.css',
 
@@ -30,6 +38,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     subStatus?: Subscription
     connected = false
     shouldScrollToBottom = true
+    showEmojiPicker = false;
+    
+    filePreview: FilePreview | null = null
+    maxFileSize = 50 * 1024 * 1024; // 50MB
+    allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
 
     constructor(
         private route: ActivatedRoute,
@@ -42,28 +56,27 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.communityId = this.route.snapshot.paramMap.get('communityId') || ''
         this.channelId = this.route.snapshot.paramMap.get('channelId') || ''
         this.cedula = localStorage.getItem('cedula') || ''
-        // 2. Obtener Nombre Real (Usando la lógica de tu app.component)
-        //this.myFullName = this.getMyNameFromStorage();
         this.loadUserDataFromService();
 
         console.log('Logueado como:', this.myFullName, 'Cédula:', this.cedula);
 
         if (this.communityId && this.cedula) {
-            // Configurar identidad en el servicio pero sin forzar desconexión agresiva
+
             this.ws.setIdentity({
                 communityId: this.communityId,
                 cedula: this.cedula,
                 channelId: this.channelId,
-            }, false) // false para evitar bucle de reconexión si ya está conectado
+            }, false)
         }
 
         this.subMsg = this.ws.messages$().subscribe((msg) => {
             const payloadChannel = msg.payload?.channelId
-            // Filtramos mensajes que no sean de este canal
             if (payloadChannel && payloadChannel !== this.channelId) return
 
             const content = this.extractContent(msg)
-            if (content) {
+            const hasFile = this.hasFile(msg)
+            
+            if (content || hasFile) {
                 this.messages.push(msg)
                 this.shouldScrollToBottom = true
             }
@@ -76,46 +89,22 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
     }
 
-    /**
-     * Lógica extraída de tu app.component.ts
-     * Parsea el objeto 'user' del localStorage y une nombre + apellido
-     */
-    // private getMyNameFromStorage(): string {
-    //     try {
-    //         const raw = localStorage.getItem('user')
-    //         if (!raw) return 'Usuario ' + this.cedula.slice(-4);
-            
-    //         const u = JSON.parse(raw)
-    //         // Une nombre y apellido, y elimina espacios vacíos
-    //         const name = [u?.name, u?.lastName].filter(Boolean).join(' ').trim()
-            
-    //         return name || u?.email || 'Usuario Anónimo'
-    //     } catch (e) {
-    //         console.error('Error parseando usuario', e);
-    //         return 'Usuario';
-    //     }
-    // }
     private loadUserDataFromService() {
-        // 1. Usamos el método del servicio para obtener el usuario (igual que en Dashboard)
         const u = this.auth.getCurrentUser<any>();
 
         if (u) {
-            // 2. Nombre: Unimos nombre y apellido
             this.myFullName = [u?.name, u?.lastName].filter(Boolean).join(' ').trim() || u?.email || 'Usuario';
 
-            // 3. Foto: Obtenemos el nombre del archivo (ej: "foto.jpg")
             const rawImgName = u?.profileImg || u?.avatar || '';
 
-            // 4. CLAVE: Usamos el helper del Auth para convertirlo en URL completa
-            // (http://localhost:3000/src/assets/profiles/...)
             this.myAvatarUrl = this.auth.profileUrl(rawImgName);
             
-            console.log('Mi Avatar URL:', this.myAvatarUrl); // Para verificar en consola
+            console.log('Mi Avatar URL:', this.myAvatarUrl);
         } else {
             this.myFullName = 'Usuario ' + this.cedula.slice(-4);
         }
     }
-    // ... (loadHistory, ngAfterViewChecked, scrollToBottom se mantienen igual) ...
+
     loadHistory() {
         this.http
             .get<any>(
@@ -155,11 +144,24 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight
         } catch (err) {}
     }
+    
+    toggleEmojiPicker() {
+        this.showEmojiPicker = !this.showEmojiPicker;
+    }
+
+    addEmoji(event: any) {
+        const emoji = event.emoji.native;
+        this.outMsg += emoji;
+    
+        // this.showEmojiPicker = false; 
+    }
+    
+    
 
     send() {
-        if (!this.outMsg.trim()) return
+        if (!this.outMsg.trim() && !this.filePreview) return
 
-        const messagePayload = {
+        const messagePayload: any = {
             text: this.outMsg.trim(),
             channelId: this.channelId,
             sender: {
@@ -170,9 +172,115 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             cedula: this.cedula
         }
 
-        this.ws.sendChannelMessage(this.channelId, messagePayload);
-        this.outMsg = '';
-        this.shouldScrollToBottom = true;
+        if (this.filePreview) {
+            const reader = new FileReader()
+            reader.onload = (e) => {
+                const base64Data = e.target?.result as string
+                messagePayload.file = {
+                    name: this.filePreview!.file.name,
+                    type: this.filePreview!.file.type,
+                    size: this.filePreview!.file.size,
+                    data: base64Data
+                }
+                
+                this.ws.sendChannelMessage(this.channelId, messagePayload)
+                this.resetForm()
+            }
+            reader.readAsDataURL(this.filePreview.file)
+        } else {
+            this.ws.sendChannelMessage(this.channelId, messagePayload)
+            this.resetForm()
+            this.shouldScrollToBottom = true
+        }
+    }
+
+    private resetForm() {
+        this.outMsg = ''
+        this.filePreview = null
+    }
+
+    onFileSelected(event: any) {
+        const files = event.target.files
+        if (!files || files.length === 0) return
+
+        const file = files[0]
+
+        if (file.size > this.maxFileSize) {
+            alert(`El archivo es demasiado grande. Máximo: ${this.maxFileSize / 1024 / 1024}MB`)
+            return
+        }
+
+        const isImage = this.allowedImageTypes.includes(file.type)
+        const isDocument = this.allowedDocTypes.includes(file.type)
+
+        if (!isImage && !isDocument) {
+            alert('Tipo de archivo no permitido. Use imágenes (JPG, PNG, GIF, WebP) o documentos (PDF, Word, TXT)')
+            return
+        }
+
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            this.filePreview = {
+                file,
+                preview: e.target?.result || null,
+                type: isImage ? 'image' : 'document'
+            }
+        }
+        reader.readAsDataURL(file)
+    }
+
+    clearFilePreview() {
+        this.filePreview = null
+    }
+
+    downloadFile(m: WSMessage) {
+        let p = m.payload
+        if (!p) return
+        if (p.payload) p = p.payload
+
+        let file = p.file
+        
+        // Si el archivo está anidado más profundo
+        if (!file && p.payload?.file) {
+            file = p.payload.file
+        }
+        
+        if (!file) return
+
+        const link = document.createElement('a')
+        link.href = file.data
+        link.download = file.name
+        link.click()
+    }
+
+    getFileExtension(fileName: string): string {
+        return fileName.split('.').pop()?.toUpperCase() || 'FILE'
+    }
+
+    hasFile(m: WSMessage): boolean {
+        let p = m.payload
+        if (!p) return false
+        if (p.payload) p = p.payload
+        
+        if (p.file) return true
+        
+        // Buscar en estructura anidada
+        if (p.payload?.file) return true
+        
+        return false
+    }
+
+    isImage(m: WSMessage): boolean {
+        let p = m.payload
+        if (!p) return false
+        if (p.payload) p = p.payload
+        
+        let file = p.file
+        if (!file && p.payload?.file) {
+            file = p.payload.file
+        }
+        
+        return file && this.allowedImageTypes.includes(file.type)
     }
 
     ngOnDestroy(): void {
@@ -198,7 +306,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         else if (data.content) content = data.content;
         
         if (content && content.startsWith('Conectado a comunidad')) return null
-        return content
+        
+        // Retornar contenido vacío en lugar de null si hay archivo
+        // para que se muestre el mensaje con el archivo
+        return content || null
     }
 
     renderMessage(m: WSMessage): string {
@@ -211,13 +322,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         
         if (p.payload) p = p.payload
 
-        // 1. Si soy yo (comparamos por cédula, que es única)
         const msgCedula = p.cedula || p.sender?.cedula || p.senderId;
         if (String(msgCedula) === String(this.cedula)) {
             return 'Tú';
         }
 
-        // 2. Si es otro, buscamos su nombre
         if (p.sender) {
             if (p.sender.username) return p.sender.username;
             if (p.sender.name) return p.sender.name; 
@@ -226,7 +335,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         
         if (p.username) return p.username;
 
-        // 3. Fallback
         if (msgCedula) return `Usuario ${String(msgCedula).slice(-4)}`;
         
         return 'Desconocido'
@@ -239,24 +347,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Desempaquetar doble payload
         if (p.payload) p = p.payload;
 
-        // 1. Buscar si el mensaje trae una URL de imagen válida
         let avatarUrl = '';
 
-        // Si soy yo, uso mi variable local (más rápido)
         const msgCedula = p.cedula || p.sender?.cedula || p.senderId;
         if (String(msgCedula) === String(this.cedula)) {
             avatarUrl = this.myAvatarUrl;
         } else {
-            // Si es otro, busco en el objeto sender
             avatarUrl = p.sender?.avatar || p.sender?.image || p.user?.avatar || '';
         }
 
-        // 2. Si encontramos URL, la devolvemos
         if (avatarUrl && avatarUrl.trim() !== '') {
             return avatarUrl;
         }
 
-        // 3. Si NO hay URL, generamos las iniciales
         let name = this.getUserName(m);
         if (name === 'Tú') name = this.myFullName;
         
@@ -272,8 +375,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         if (p && p.payload) p = p.payload
 
         const msgCedula = p?.cedula || p?.sender?.cedula || p?.senderId;
-        
-        // Comparamos string con string para evitar fallos
         return String(msgCedula) === String(this.cedula)
     }
     
@@ -283,7 +384,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         const prev = this.messages[i - 1]
         return this.getUserName(current) === this.getUserName(prev)
     }
-    // Agrega esto en tu clase ChatComponent
 
     handleImageError(event: any, name: string) {
         if (name === 'Tú') name = this.myFullName;

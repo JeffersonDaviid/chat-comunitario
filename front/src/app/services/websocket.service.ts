@@ -208,7 +208,7 @@ export class WebsocketService implements OnDestroy {
             // Si es solo texto, lo asignamos a la propiedad text
             payloadData.text = content;
         } else {
-            // Si es un objeto (con sender, cedula, etc), lo mezclamos
+            // Si es un objeto (con sender, cedula, file, etc), lo mezclamos
             payloadData = { ...payloadData, ...content };
         }
 

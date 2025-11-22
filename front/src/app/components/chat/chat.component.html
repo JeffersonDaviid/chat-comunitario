@@ -30,7 +30,11 @@
 
     <div *ngFor="let m of messages; let i = index; trackBy: trackByIndex" 
          class="group flex gap-3 px-2 py-1 hover:bg-gray-50 rounded transition-colors relative"
-         [ngClass]="{'mt-4': !isSameUser(i), 'mt-0.5': isSameUser(i)}">
+         [ngClass]="{
+            'mt-4': !isSameUser(i), 
+            'mt-0.5': isSameUser(i),
+            'flex-row-reverse': isMine(m) 
+         }">
       
       <div class="w-9 flex-shrink-0 flex flex-col items-end">
           
@@ -44,15 +48,19 @@
           </ng-container>
 
           <ng-container *ngIf="isSameUser(i)">
-            <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1 pt-1">
+            <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pt-1"
+                  [ngClass]="isMine(m) ? 'pl-1' : 'pr-1'">
                 {{ m.payload?.ts | date:'HH:mm' }}
             </span>
           </ng-container>
       </div>
 
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0 flex flex-col" [ngClass]="{'items-end': isMine(m)}">
         
-        <div *ngIf="!isSameUser(i)" class="flex items-baseline gap-2">
+        <div *ngIf="!isSameUser(i)" 
+             class="flex items-baseline gap-2 w-full"
+             [ngClass]="{'flex-row-reverse': isMine(m), 'justify-start': !isMine(m)}">
+          
           <span class="font-bold text-[15px] text-gray-900 cursor-pointer hover:underline">
             {{ getUserName(m) }}
           </span>
@@ -61,20 +69,129 @@
           </span>
         </div>
 
-        <div class="text-[15px] text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
+        <div *ngIf="renderMessage(m)" 
+             class="text-[15px] text-gray-800 leading-relaxed whitespace-pre-wrap break-words max-w-2xl"
+             [ngClass]="{'text-right': isMine(m)}">
             {{ renderMessage(m) }}
         </div>
+
+        <div *ngIf="hasFile(m)" class="mt-2">
+          
+          <div *ngIf="isImage(m)" class="file-preview-container">
+            <img 
+                [src]="m.payload?.file?.data || m.payload?.payload?.file?.data" 
+                class="max-w-xs rounded shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+                alt="Imagen compartida"
+            >
+          </div>
+          
+          <div *ngIf="!isImage(m)" class="file-document-container">
+            <div class="flex items-center gap-2 p-3 bg-gray-100 rounded hover:bg-gray-200 transition-colors cursor-pointer min-w-[200px]"
+                 [ngClass]="{'flex-row-reverse text-right': isMine(m)}"
+                 (click)="downloadFile(m)">
+                 
+              <div class="w-10 h-10 flex items-center justify-center bg-blue-100 rounded text-blue-600 font-bold text-xs flex-shrink-0">
+                {{ getFileExtension(m.payload?.file?.name || m.payload?.payload?.file?.name || 'FILE') }}
+              </div>
+              
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate">
+                  {{ m.payload?.file?.name || m.payload?.payload?.file?.name }}
+                </p>
+                <p class="text-xs text-gray-500">
+                  {{ (m.payload?.file?.size || m.payload?.payload?.file?.size || 0) | number }} bytes
+                </p>
+              </div>
+              
+              <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
       </div>
-      
     </div>
   </div>
 
-  <div class="p-5 pt-2">
+  <div class="p-5 pt-2 bg-white">
+    
+    <div *ngIf="filePreview" class="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-700">Vista previa del archivo</span>
+        <button 
+          type="button" 
+          (click)="clearFilePreview()"
+          class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div *ngIf="filePreview.type === 'image'" class="mb-2">
+        <img 
+          [src]="filePreview.preview" 
+          class="max-h-48 rounded border border-gray-200"
+          alt="Preview"
+        >
+      </div>
+
+      <div *ngIf="filePreview.type === 'document'" class="p-2 bg-white rounded border border-gray-200">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 flex items-center justify-center bg-blue-100 rounded text-blue-600 font-bold text-xs">
+            {{ getFileExtension(filePreview.file.name) }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800 truncate">{{ filePreview.file.name }}</p>
+            <p class="text-xs text-gray-500">{{ filePreview.file.size | number }} bytes</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <form (submit)="send()" class="bg-white border border-gray-300 rounded-xl shadow-sm focus-within:ring-1 focus-within:ring-gray-400 focus-within:border-gray-400 transition-all relative">
         
-        <div class="flex items-center gap-1 px-2 py-1.5 bg-gray-50 rounded-t-xl border-b border-gray-100">
-            <button type="button" class="p-1 hover:bg-gray-200 rounded text-gray-500 font-bold text-xs w-6 h-6">B</button>
-            <button type="button" class="p-1 hover:bg-gray-200 rounded text-gray-500 italic text-xs w-6 h-6">I</button>
+        <div class="flex items-center gap-1 px-2 py-1.5 bg-gray-50 rounded-t-xl border-b border-gray-100 relative">
+            
+            <label type="button" class="p-1 hover:bg-gray-200 rounded text-gray-500 font-bold text-xs w-6 h-6 cursor-pointer flex items-center justify-center" title="Cargar archivo">
+              <input 
+                type="file" 
+                class="hidden" 
+                (change)="onFileSelected($event)"
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+            </label>
+
+            <button 
+                type="button" 
+                (click)="toggleEmojiPicker()"
+                class="p-1 hover:bg-gray-200 rounded text-gray-500 w-6 h-6 flex items-center justify-center transition-colors"
+                [class.text-yellow-500]="showEmojiPicker"
+                title="Emojis">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+
+            <div *ngIf="showEmojiPicker" class="absolute bottom-12 left-0 z-50">
+              <div class="shadow-2xl rounded-lg border border-gray-300 bg-white overflow-hidden">
+                <emoji-mart 
+                  set="apple"
+                  [isNative]="false"
+                  [showPreview]="false"
+                  [enableSearch]="true"
+                  [hideRecent]="false"
+                  color="#15803d"
+                  (emojiClick)="addEmoji($event)">
+                </emoji-mart>
+              </div>
+            <div class="fixed inset-0 z-[-1]" (click)="showEmojiPicker = false"></div>
+        </div>
+
         </div>
 
         <input 
@@ -88,8 +205,8 @@
         <div class="flex justify-end items-center px-2 pb-2 pt-1">
             <button 
                 type="submit" 
-                [disabled]="!outMsg.trim()"
-                [ngClass]="outMsg.trim() ? 'bg-green-700 text-white hover:bg-green-800' : 'bg-gray-100 text-gray-400'"
+                [disabled]="!outMsg.trim() && !filePreview"
+                [ngClass]="(outMsg.trim() || filePreview) ? 'bg-green-700 text-white hover:bg-green-800' : 'bg-gray-100 text-gray-400'"
                 class="px-3 py-1.5 rounded transition-colors flex items-center gap-2 text-sm font-medium">
                 Enviar
                 <svg class="w-3 h-3 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
