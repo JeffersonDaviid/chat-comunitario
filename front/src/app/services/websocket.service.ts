@@ -198,12 +198,26 @@ export class WebsocketService implements OnDestroy {
     /**
      * Convenience function to send a message to a specific channel.
      */
-    public sendChannelMessage(channelId: string, text: string) {
-        const payload: WSMessage = {
-            type: 'chat',
-            payload: { text, ts: Date.now(), channelId },
+    public sendChannelMessage(channelId: string, content: string | any) {
+        let payloadData: any = {
+            ts: Date.now(),
+            channelId
+        };
+
+        if (typeof content === 'string') {
+            // Si es solo texto, lo asignamos a la propiedad text
+            payloadData.text = content;
+        } else {
+            // Si es un objeto (con sender, cedula, etc), lo mezclamos
+            payloadData = { ...payloadData, ...content };
         }
-        this.send(payload)
+
+        const msg: WSMessage = {
+            type: 'chat',
+            payload: payloadData,
+        }
+        
+        this.send(msg)
     }
 
     /**

@@ -1,18 +1,12 @@
 <div class="h-full flex flex-col bg-white font-sans text-gray-900">
   
-  <!-- 1. HEADER: Barra superior estilo Canal -->
-  <!-- border-b crea la línea divisoria sutil. shadow-sm da profundidad. -->
   <div class="px-6 py-3 border-b border-gray-200 flex items-center justify-between bg-white shadow-sm z-10">
     <div class="flex items-center gap-3">
-      <!-- Icono # grande y gris claro -->
       <div class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded text-gray-500 font-medium text-lg">#</div>
-      
       <div>
-        <!-- Nombre del canal en negrita -->
         <h2 class="font-bold text-gray-800 leading-tight flex items-center gap-2">
             Canal General
         </h2>
-        <!-- Subtítulo con estado y comunidad -->
         <div class="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
            <span class="flex h-2 w-2 relative">
               <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="connected ? 'bg-green-500' : 'bg-red-500'"></span>
@@ -25,11 +19,8 @@
     </div>
   </div>
 
-  <!-- 2. ÁREA DE MENSAJES -->
-  <!-- flex-1 ocupa el espacio restante. overflow-y-auto permite scroll. -->
   <div #scrollContainer class="flex-1 overflow-y-auto px-4 py-4 scroll-smooth custom-scrollbar">
     
-    <!-- Mensaje de bienvenida (Estado vacío) -->
     <div *ngIf="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400">
         <div class="bg-gray-50 p-4 rounded-full mb-3">
             <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
@@ -37,22 +28,21 @@
         <p class="text-sm">Sé el primero en escribir en este canal.</p>
     </div>
 
-    <!-- Bucle de mensajes -->
-    <!-- 'group' permite efectos hover. 'hover:bg-gray-50' ilumina el mensaje al pasar el mouse -->
     <div *ngFor="let m of messages; let i = index; trackBy: trackByIndex" 
          class="group flex gap-3 px-2 py-1 hover:bg-gray-50 rounded transition-colors relative"
          [ngClass]="{'mt-4': !isSameUser(i), 'mt-0.5': isSameUser(i)}">
       
-      <!-- COLUMNA IZQUIERDA: Avatar (36px) -->
       <div class="w-9 flex-shrink-0 flex flex-col items-end">
-          <!-- Si es un nuevo usuario, mostramos la foto -->
+          
           <ng-container *ngIf="!isSameUser(i)">
-            <img [src]="getUserAvatar(m)" 
-                 class="w-9 h-9 rounded bg-gray-200 object-cover shadow-sm"
-                 alt="Avatar">
+            <img 
+                [src]="getUserAvatar(m)" 
+                (error)="handleImageError($event, getUserName(m))" 
+                class="w-9 h-9 rounded bg-gray-200 object-cover shadow-sm"
+                alt="Avatar"
+            >
           </ng-container>
 
-          <!-- Si es el MISMO usuario, mostramos la hora solo al pasar el mouse (Estilo Slack) -->
           <ng-container *ngIf="isSameUser(i)">
             <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1 pt-1">
                 {{ m.payload?.ts | date:'HH:mm' }}
@@ -60,10 +50,8 @@
           </ng-container>
       </div>
 
-      <!-- COLUMNA DERECHA: Contenido -->
       <div class="flex-1 min-w-0">
         
-        <!-- Encabezado del mensaje (Nombre + Hora) - Solo si cambia de usuario -->
         <div *ngIf="!isSameUser(i)" class="flex items-baseline gap-2">
           <span class="font-bold text-[15px] text-gray-900 cursor-pointer hover:underline">
             {{ getUserName(m) }}
@@ -73,8 +61,6 @@
           </span>
         </div>
 
-        <!-- Texto del mensaje -->
-        <!-- whitespace-pre-wrap respeta los saltos de línea. text-[15px] es un tamaño muy legible -->
         <div class="text-[15px] text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
             {{ renderMessage(m) }}
         </div>
@@ -83,18 +69,14 @@
     </div>
   </div>
 
-  <!-- 3. ÁREA DE INPUT: Estilo Editor "Rico" -->
   <div class="p-5 pt-2">
     <form (submit)="send()" class="bg-white border border-gray-300 rounded-xl shadow-sm focus-within:ring-1 focus-within:ring-gray-400 focus-within:border-gray-400 transition-all relative">
         
-        <!-- Barra de herramientas falsa (Decorativa) -->
         <div class="flex items-center gap-1 px-2 py-1.5 bg-gray-50 rounded-t-xl border-b border-gray-100">
             <button type="button" class="p-1 hover:bg-gray-200 rounded text-gray-500 font-bold text-xs w-6 h-6">B</button>
             <button type="button" class="p-1 hover:bg-gray-200 rounded text-gray-500 italic text-xs w-6 h-6">I</button>
-            <button type="button" class="p-1 hover:bg-gray-200 rounded text-gray-500 line-through text-xs w-6 h-6">S</button>
         </div>
 
-        <!-- Input real -->
         <input 
             [(ngModel)]="outMsg" 
             name="outMsg" 
@@ -103,7 +85,6 @@
             class="w-full p-3 bg-transparent border-none outline-none text-[15px] placeholder-gray-400"
         />
 
-        <!-- Pie del input con botón enviar -->
         <div class="flex justify-end items-center px-2 pb-2 pt-1">
             <button 
                 type="submit" 
@@ -115,8 +96,5 @@
             </button>
         </div>
     </form>
-    <div class="text-center mt-2">
-        <p class="text-[10px] text-gray-400"><strong>Tip:</strong> Pulsa Enter para enviar</p>
-    </div>
   </div>
 </div>
