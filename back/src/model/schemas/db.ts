@@ -4,7 +4,10 @@ export interface User {
   lastName: string;
   email: string;
   password: string;
+  phone: string;
   address: string;
+  latitude: number;
+  longitude: number;
   profileImg: string; // path
 }
 

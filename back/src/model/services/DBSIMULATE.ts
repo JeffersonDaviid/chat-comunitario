@@ -10,7 +10,10 @@ const user1: User = {
 	lastName: 'Doe',
 	email: 'john@example.com',
 	password: 'hashedPassword123',
+	phone: '0987654321',
 	address: '123 Main St, Springfield',
+	latitude: -0.1807,
+	longitude: -78.4678,
 	profileImg: '/src/assets/profiles/0102030405.jpg',
 }
 
@@ -20,7 +23,10 @@ const user2: User = {
 	lastName: 'Smith',
 	email: 'jane@example.com',
 	password: 'hashedPassword456',
+	phone: '0987654322',
 	address: '456 Oak Ave, Riverdale',
+	latitude: -0.2299,
+	longitude: -78.5249,
 	profileImg: '/src/assets/profiles/1122334455.jpg',
 }
 
@@ -30,7 +36,10 @@ const user3: User = {
 	lastName: 'Wilson',
 	email: 'bob@example.com',
 	password: 'hashedPassword789',
+	phone: '0987654323',
 	address: '789 Pine Rd, Hill Valley',
+	latitude: -0.9312,
+	longitude: -78.6146,
 	profileImg: '/src/assets/profiles/0918273645.jpg',
 }
 

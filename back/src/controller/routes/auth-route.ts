@@ -26,6 +26,9 @@ authRoute.post(
 			// Adjuntar Buffer al body para cumplir z.instanceof(Buffer)
 			;(req.body as any).profile = req.file.buffer
 		}
+		// Convertir latitude y longitude a números
+		if (req.body.latitude) req.body.latitude = parseFloat(req.body.latitude)
+		if (req.body.longitude) req.body.longitude = parseFloat(req.body.longitude)
 		next()
 	},
 	schemaValidator(RegisterUserSchema),

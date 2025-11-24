@@ -30,7 +30,10 @@ export class AuthService {
 			email: string
 			password: string
 			confirmPassword: string
+			phone: string
 			address: string
+			latitude: number
+			longitude: number
 		},
 		file?: File | null
 	): Observable<any> {
@@ -41,7 +44,10 @@ export class AuthService {
 		formData.append('email', data.email || '')
 		formData.append('password', data.password || '')
 		formData.append('confirmPassword', data.confirmPassword || '')
+		formData.append('phone', data.phone || '')
 		formData.append('address', data.address || '')
+		formData.append('latitude', data.latitude.toString())
+		formData.append('longitude', data.longitude.toString())
 		if (file) {
 			formData.append('profile', file, file.name)
 		}
