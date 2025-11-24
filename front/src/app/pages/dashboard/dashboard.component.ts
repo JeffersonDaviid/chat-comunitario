@@ -2,13 +2,15 @@ import { Component, OnInit } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { HttpClientModule } from '@angular/common/http'
 import { Router } from '@angular/router'
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms'
 import { CommunityService } from '../../services/community.service'
+import { ChannelService } from '../../services/channel.service'
 import { AuthService } from '../../services/auth.service'
 
 @Component({
 	selector: 'app-dashboard',
 	standalone: true,
-	imports: [CommonModule, HttpClientModule],
+	imports: [CommonModule, HttpClientModule, ReactiveFormsModule],
 	templateUrl: './dashboard.component.html',
 	styleUrl: './dashboard.component.css',
 })
@@ -29,10 +31,34 @@ export class DashboardComponent implements OnInit {
 	loading = false
 	errorMsg = ''
 
+	// Modal states
+	showCreateCommunityModal = false
+	creatingCommunity = false
+	createCommunityError = ''
+
+	// Modal states para canales
+	showCreateChannelModal = false
+	creatingChannel = false
+	createChannelError = ''
+	selectedCommunityIdForChannel = ''
+
+	// Form
+	communityForm = this.fb.group({
+		title: ['', [Validators.required, Validators.minLength(3)]],
+		description: ['', [Validators.required, Validators.minLength(10)]],
+	})
+
+	channelForm = this.fb.group({
+		name: ['', [Validators.required, Validators.minLength(2)]],
+		description: ['', [Validators.required, Validators.minLength(5)]],
+	})
+
 	constructor(
-		private community: CommunityService,
-		private auth: AuthService,
-		private router: Router
+		private readonly community: CommunityService,
+		private readonly channel: ChannelService,
+		private readonly auth: AuthService,
+		private readonly router: Router,
+		private readonly fb: FormBuilder
 	) {}
 
 	ngOnInit(): void {
@@ -58,7 +84,7 @@ export class DashboardComponent implements OnInit {
 
 	fetchCommunities() {
 		this.loading = true
-		this.community.getCommunities(this.userCedula).subscribe({
+		this.community.getCommunitiesByUser(this.userCedula).subscribe({
 			next: (res) => {
 				this.communities = res?.communities || []
 				this.loading = false
@@ -76,18 +102,63 @@ export class DashboardComponent implements OnInit {
 
 	// Sidebar actions
 	addNewCommunity() {
-		console.log('Agregar nueva comunidad')
-		// TODO: Implementar modal para crear comunidad
+		this.showCreateCommunityModal = true
+		this.createCommunityError = ''
+	}
+
+	closeCreateCommunityModal() {
+		this.showCreateCommunityModal = false
+		this.communityForm.reset()
+		this.createCommunityError = ''
+		this.creatingCommunity = false
+	}
+
+	submitCreateCommunity() {
+		if (this.communityForm.invalid) {
+			this.communityForm.markAllAsTouched()
+			return
+		}
+
+		this.creatingCommunity = true
+		this.createCommunityError = ''
+
+		const payload = {
+			title: this.communityForm.get('title')?.value || '',
+			description: this.communityForm.get('description')?.value || '',
+			ownerCedula: this.userCedula,
+		}
+
+		this.community.createCommunity(payload).subscribe({
+			next: (res) => {
+				if (res.success) {
+					this.closeCreateCommunityModal()
+					this.fetchCommunities()
+				} else {
+					this.createCommunityError = res.message || 'Error al crear comunidad'
+				}
+				this.creatingCommunity = false
+			},
+			error: (err) => {
+				this.createCommunityError =
+					err?.error?.message || 'Error al crear comunidad'
+				this.creatingCommunity = false
+			},
+		})
 	}
 
 	sendNewMessage() {
 		console.log('Enviar nuevo mensaje')
-		// TODO: Implementar modal para enviar mensaje
+		// Será implementado en futuras versiones
 	}
 
-	createNewChannel() {
-		console.log('Crear nuevo canal')
-		// TODO: Implementar modal para crear canal
+	createNewChannel(communityId?: string) {
+		if (!communityId) {
+			return
+		}
+		this.selectedCommunityIdForChannel = communityId
+		this.showCreateChannelModal = true
+		this.createChannelError = ''
+		this.channelForm.reset()
 	}
 
 	goHome() {
@@ -96,22 +167,17 @@ export class DashboardComponent implements OnInit {
 
 	viewContacts() {
 		console.log('Ver contactos')
-		// TODO: Implementar vista de contactos
+		// Será implementado en futuras versiones
 	}
 
 	viewSaved() {
 		console.log('Ver guardados')
-		// TODO: Implementar vista de mensajes guardados
+		// Será implementado en futuras versiones
 	}
 
 	viewHistory() {
 		console.log('Ver historial')
-		// TODO: Implementar vista de historial
-	}
-
-	openSettings() {
-		console.log('Abrir configuración')
-		// TODO: Implementar panel de configuración
+		// Será implementado en futuras versiones
 	}
 
 	logout() {
@@ -124,6 +190,46 @@ export class DashboardComponent implements OnInit {
 
 	toggleSidebar() {
 		this.sidebarExpanded = !this.sidebarExpanded
+	}
+
+	closeCreateChannelModal() {
+		this.showCreateChannelModal = false
+		this.channelForm.reset()
+		this.createChannelError = ''
+		this.creatingChannel = false
+		this.selectedCommunityIdForChannel = ''
+	}
+
+	submitCreateChannel() {
+		if (this.channelForm.invalid) {
+			this.channelForm.markAllAsTouched()
+			return
+		}
+
+		this.creatingChannel = true
+		this.createChannelError = ''
+
+		const payload = {
+			communityId: this.selectedCommunityIdForChannel,
+			name: this.channelForm.get('name')?.value || '',
+			description: this.channelForm.get('description')?.value || '',
+		}
+
+		this.channel.createChannel(payload).subscribe({
+			next: (res) => {
+				if (res.success) {
+					this.closeCreateChannelModal()
+					this.fetchCommunities()
+				} else {
+					this.createChannelError = res.message || 'Error al crear canal'
+				}
+				this.creatingChannel = false
+			},
+			error: (err) => {
+				this.createChannelError = err?.error?.message || 'Error al crear canal'
+				this.creatingChannel = false
+			},
+		})
 	}
 
 	expandSidebar() {
@@ -147,5 +253,13 @@ export class DashboardComponent implements OnInit {
 		} else {
 			this.sidebarExpanded = false
 		}
+	}
+
+	get f() {
+		return this.communityForm.controls
+	}
+
+	get fc() {
+		return this.channelForm.controls
 	}
 }

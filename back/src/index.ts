@@ -5,6 +5,8 @@ import morgan from 'morgan'
 import path from 'path'
 import { WebSocketServer, WebSocket } from 'ws'
 import { authRoute } from './controller/routes/auth-route'
+import { communityRoute } from './controller/routes/community-route'
+import { channelRoute } from './controller/routes/channel-route'
 import { dbCommunities, dbUsers } from './model/services/DBSIMULATE'
 import { generateUUID } from './utils/static'
 
@@ -27,6 +29,8 @@ app.get('/', (_req, res) => {
 
 // API
 app.use('/api/auth', authRoute)
+app.use('/api/community', communityRoute)
+app.use('/api/channel', channelRoute)
 
 // Start HTTP server (Express)
 const server = app.listen(PORT, () => {

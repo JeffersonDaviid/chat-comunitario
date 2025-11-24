@@ -10,6 +10,8 @@ const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
 const ws_1 = require("ws");
 const auth_route_1 = require("./controller/routes/auth-route");
+const community_route_1 = require("./controller/routes/community-route");
+const channel_route_1 = require("./controller/routes/channel-route");
 const DBSIMULATE_1 = require("./model/services/DBSIMULATE");
 const static_1 = require("./utils/static");
 const { PORT = 3000 } = process.env;
@@ -23,6 +25,8 @@ app.get('/', (_req, res) => {
     res.send('<h2>Bienvenido a CHAT COMUNITARIO</h2>');
 });
 app.use('/api/auth', auth_route_1.authRoute);
+app.use('/api/community', community_route_1.communityRoute);
+app.use('/api/channel', channel_route_1.channelRoute);
 const server = app.listen(PORT, () => {
     console.log(`Servidor HTTP (Express) iniciado en el puerto ${PORT}`);
 });

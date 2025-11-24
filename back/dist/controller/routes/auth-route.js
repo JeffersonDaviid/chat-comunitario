@@ -27,6 +27,10 @@ exports.authRoute.post('/register', upload.single('profile'), (req, _res, next) 
         ;
         req.body.profile = req.file.buffer;
     }
+    if (req.body.latitude)
+        req.body.latitude = parseFloat(req.body.latitude);
+    if (req.body.longitude)
+        req.body.longitude = parseFloat(req.body.longitude);
     next();
 }, (0, data_validation_1.default)(user_1.RegisterUserSchema), register_ctrl_1.registerCtrl);
 exports.authRoute.post('/login', (0, data_validation_1.default)(user_1.LoginSchema), login_ctrl_1.loginCtrl);
