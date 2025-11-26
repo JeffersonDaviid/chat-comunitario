@@ -187,17 +187,13 @@ export class WebsocketService implements OnDestroy {
         }
     }
 
-    /**
-     * Convenience function to send a simple text message.
-     */
+ 
     public sendText(text: string) {
         const payload: WSMessage = { type: 'chat', payload: { text, ts: Date.now() } }
         this.send(payload)
     }
 
-    /**
-     * Convenience function to send a message to a specific channel.
-     */
+   
     public sendChannelMessage(channelId: string, content: string | any) {
         let payloadData: any = {
             ts: Date.now(),
@@ -220,9 +216,7 @@ export class WebsocketService implements OnDestroy {
         this.send(msg)
     }
 
-    /**
-     * Closes the WebSocket connection and unsubscribes the Observable.
-     */
+    
     public close() {
         this.manualClose = true // Prevents automatic reconnection
         if (this.socket$) {
@@ -236,9 +230,7 @@ export class WebsocketService implements OnDestroy {
         }
     }
 
-    /**
-     * Ensures the connection is closed and Subjects are completed when the service is destroyed.
-     */
+    
     ngOnDestroy(): void {
         this.close()
         this.incoming$.complete()

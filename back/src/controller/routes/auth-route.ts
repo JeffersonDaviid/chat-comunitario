@@ -68,10 +68,18 @@ authRoute.get('/communities/:communityId/channels/:channelId/messages', (req, re
 
 	const messages = (chan.messages || []).map((m) => ({
 		id: m.id,
-		owner: m.owner
-			? { cedula: m.owner.cedula, name: m.owner.name, lastName: m.owner.lastName }
+		senderId: m.owner?.cedula,
+		sender: m.owner
+			? { 
+				cedula: m.owner.cedula, 
+				username: `${m.owner.name} ${m.owner.lastName}`,
+				name: m.owner.name, 
+				lastName: m.owner.lastName,
+				avatar: m.owner.profileImg
+			}
 			: undefined,
 		content: m.content,
+		text: m.content,
 		timestamp: m.timestamp,
 	}))
 

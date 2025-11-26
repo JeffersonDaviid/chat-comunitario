@@ -1,8 +1,10 @@
 import { generateUUID } from '../../utils/static'
 import { Community, User } from '../schemas/db'
+import { loadCommunitiesFromFile, loadUsersFromFile, saveCommunitiesToFile, saveUsersToFile } from './file-storage'
 
-export const dbUsers: User[] = []
-export const dbCommunities: Community[] = []
+// Declarar como exportable
+export let dbUsers: User[] = []
+export let dbCommunities: Community[] = []
 
 const user1: User = {
 	cedula: '0102030405',
@@ -91,3 +93,34 @@ const community2: Community = {
 
 dbUsers.push(user1, user2, user3)
 dbCommunities.push(community1, community2)
+
+
+export function initializeDatabaseWithPersistence() {
+	// Intentar cargar datos guardados
+	const savedUsers = loadUsersFromFile()
+	const savedCommunities = loadCommunitiesFromFile()
+
+	if (savedUsers.length > 0) {
+		
+		dbUsers.length = 0
+		dbUsers.push(...savedUsers)
+		console.log(`[DB] ${dbUsers.length} usuarios cargados desde archivo`)
+	} else {
+		saveUsersToFile(dbUsers)
+		console.log('[DB] Datos de usuarios iniciales guardados')
+	}
+
+	if (savedCommunities.length > 0) {
+		dbCommunities.length = 0
+		dbCommunities.push(...savedCommunities)
+		console.log(`[DB] ${dbCommunities.length} comunidades cargadas desde archivo`)
+	} else {
+		saveCommunitiesToFile(dbCommunities)
+		console.log('[DB] Datos de comunidades iniciales guardados')
+	}
+}
+
+export function saveChanges() {
+	saveUsersToFile(dbUsers)
+	saveCommunitiesToFile(dbCommunities)
+}

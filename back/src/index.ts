@@ -7,10 +7,14 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { authRoute } from './controller/routes/auth-route'
 import { communityRoute } from './controller/routes/community-route'
 import { channelRoute } from './controller/routes/channel-route'
-import { dbCommunities, dbUsers } from './model/services/DBSIMULATE'
+import { dbCommunities, dbUsers, initializeDatabaseWithPersistence, saveChanges } from './model/services/DBSIMULATE'
 import { generateUUID } from './utils/static'
 
 const { PORT = 3000 } = process.env
+
+// ====== INICIALIZAR PERSISTENCIA ======
+initializeDatabaseWithPersistence()
+// ====================================
 
 const app = express()
 app.use(cors())
@@ -99,14 +103,22 @@ wss.on('connection', (socket, req) => {
 	chanMap.set(channelIdFromConn, set)
 	channelSockets.set(communityId, chanMap)
 
+	// Obtener nombre del canal desde la estructura de datos (no crear variables innecesarias)
+	const channelName = community.channels?.find((ch) => ch.id === channelIdFromConn)?.name || 'Canal'
+
+	// Enviar mensaje de bienvenida con nombres de comunidad y canal
 	socket.send(
 		JSON.stringify({
 			type: 'welcome',
-			message: `Conectado a comunidad ${community.title} / canal`,
+			message: `Conectado a comunidad ${community.title} / canal ${channelName}`,
 			communityId,
+			communityName: community.title,
 			channelId: channelIdFromConn,
+			channelName: channelName,
 		})
 	)
+
+	console.log(`[WS] Usuario ${cedula} conectado a ${community.title} / ${channelName}`)
 
 	// Manejar mensajes: broadcast SOLO dentro de la misma comunidad
 	socket.on('message', (raw) => {
@@ -159,6 +171,10 @@ wss.on('connection', (socket, req) => {
 					content: String(payload?.text ?? payload?.content ?? ''),
 					timestamp: packet.timestamp,
 				})
+				// ====== GUARDAR CAMBIOS EN ARCHIVO ======
+				saveChanges()
+				console.log(`[WS] Mensaje guardado en ${comm.title} / ${chan.name}`)
+				// ========================================
 			}
 		} catch (e) {
 			console.warn('No se pudo persistir el mensaje en DB simulada:', e)

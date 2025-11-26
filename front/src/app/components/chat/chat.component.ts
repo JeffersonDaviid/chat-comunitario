@@ -28,6 +28,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     communityId = ''
     channelId = ''
+    communityName = ''
+    channelName = ''
     cedula = ''
     outMsg = ''
     myFullName = '' 
@@ -59,33 +61,74 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.loadUserDataFromService();
 
         console.log('Logueado como:', this.myFullName, 'Cédula:', this.cedula);
+        console.log(`[Chat] Componente iniciado - Community: ${this.communityId}, Channel: ${this.channelId}`)
 
-        if (this.communityId && this.cedula) {
-
-            this.ws.setIdentity({
-                communityId: this.communityId,
-                cedula: this.cedula,
-                channelId: this.channelId,
-            }, false)
+        // PRIMERO: Obtener nombres de comunidad y canal desde la API
+        if (this.communityId && this.channelId) {
+            this.http.get<any>(`http://localhost:3000/api/community/${this.communityId}`).subscribe({
+                next: (res) => {
+                    const community = res.community
+                    this.communityName = community.title || ''
+                    const channel = community.channels?.find((ch: any) => ch.id === this.channelId)
+                    this.channelName = channel?.name || ''
+                    console.log(`[Chat] Nombres obtenidos - Comunidad: ${this.communityName}, Canal: ${this.channelName}`)
+                },
+                error: (err) => console.error('[Chat] Error obteniendo comunidad:', err)
+            })
         }
 
+        // SEGUNDO: Cargar historial ANTES de suscribirse a mensajes nuevos
+        if (this.communityId && this.channelId) {
+            this.loadHistory()
+        }
+
+        // SEGUNDO: suscribirse a mensajes en vivo
         this.subMsg = this.ws.messages$().subscribe((msg) => {
+            console.log('[Chat] Mensaje recibido del WS:', msg.type, msg.payload?.message || msg.payload?.text || msg.payload?.content)
+            
+            // Si es un mensaje de bienvenida, extraer nombres de comunidad y canal
+            if (msg.type === 'welcome' && msg.payload?.communityName && msg.payload?.channelName) {
+                this.communityName = msg.payload.communityName
+                this.channelName = msg.payload.channelName
+                console.log(`[Chat] Nombres recibidos del WS - Comunidad: ${this.communityName}, Canal: ${this.channelName}`)
+                return // No agregar el mensaje de bienvenida a la lista
+            }
+            
             const payloadChannel = msg.payload?.channelId
-            if (payloadChannel && payloadChannel !== this.channelId) return
+            if (payloadChannel && payloadChannel !== this.channelId) {
+                console.log(`[Chat] Mensaje descartado: no pertenece a este canal (${payloadChannel} !== ${this.channelId})`)
+                return
+            }
 
             const content = this.extractContent(msg)
             const hasFile = this.hasFile(msg)
             
+            console.log(`[Chat] Content: "${content}", HasFile: ${hasFile}`)
+            
             if (content || hasFile) {
+                console.log(`[Chat] Mensajes antes de push: ${this.messages.length}`)
                 this.messages.push(msg)
+                console.log(`[Chat] Mensajes después de push: ${this.messages.length}`)
                 this.shouldScrollToBottom = true
+                console.log(`[Chat] ✅ Mensaje añadido. Total: ${this.messages.length}`)
+            } else {
+                console.log(`[Chat] ⏭️ Mensaje ignorado (vacío o de sistema)`)
             }
         })
 
-        this.subStatus = this.ws.status$().subscribe((state) => (this.connected = state))
+        this.subStatus = this.ws.status$().subscribe((state) => {
+            this.connected = state
+            console.log(`[Chat] WebSocket conectado: ${state}`)
+        })
 
-        if (this.communityId && this.channelId) {
-            this.loadHistory()
+        // TERCERO: establecer identidad y conectar
+        if (this.communityId && this.cedula && this.channelId) {
+            console.log(`[Chat] Llamando setIdentity con reconnect=true`)
+            this.ws.setIdentity({
+                communityId: this.communityId,
+                cedula: this.cedula,
+                channelId: this.channelId,
+            }, true) // reconnect = true para establecer la conexión inmediatamente
         }
     }
 
@@ -106,6 +149,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     loadHistory() {
+        console.log(`[Chat] Iniciando carga de historial...`)
         this.http
             .get<any>(
                 `http://localhost:3000/api/auth/communities/${this.communityId}/channels/${this.channelId}/messages`
@@ -113,20 +157,41 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             .subscribe({
                 next: (res) => {
                     const msgs = (res?.messages || []) as Array<any>
-                    const adapted: WSMessage[] = msgs.map((m) => ({
-                        type: 'chat',
-                        payload: {
-                            ...m, 
-                            text: m.content,
-                            ts: new Date(m.timestamp).getTime(),
-                            channelId: this.channelId,
-                            // Aseguramos que el historial tenga estructura sender correcta
-                            sender: m.sender || { username: 'Historial', cedula: m.senderId } 
-                        },
-                    }))
+                
+                    const adapted: WSMessage[] = msgs.map((m) => {
+                        // Detectar archivo en múltiples ubicaciones posibles
+                        // Algunos backends lo mandan en 'file', otros en 'attachment', otros en 'media'
+                        const foundFile = m.file || m.attachment || m.media || m.payload?.file || null;
+
+                        return {
+                            type: 'chat',
+                            payload: {
+                                cedula: m.senderId || m.sender?.cedula,
+                                senderId: m.senderId || m.sender?.cedula,
+                                sender: m.sender || { 
+                                    cedula: m.senderId,
+                                    username: 'Usuario',
+                                    avatar: ''
+                                },
+                                // Evitamos asignar "null" string aquí también
+                                text: (m.text === 'null' ? null : m.text) || (m.content === 'null' ? null : m.content),
+                                content: m.content === 'null' ? null : m.content,
+                                file: m.file || m.attachment || m.payload?.file || null,
+                                
+                                channelId: this.channelId,
+                                ts: new Date(m.timestamp).getTime(),
+                                timestamp: m.timestamp,
+                                id: m.id,
+                            },
+                        };
+                    });
                     
+                    // Invertimos el orden si vienen del más nuevo al más viejo, o concatenamos según tu lógica
+                    // Asumiendo que vienen cronológicos, los ponemos al principio
                     this.messages = adapted.concat(this.messages)
                     this.shouldScrollToBottom = true
+                    
+                    console.log(`[Chat] ✅ Historial cargado. Mensajes visibles: ${this.messages.length}`)
                 },
                 error: (err) => console.error('Error cargando historial', err),
             })
@@ -284,6 +349,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     ngOnDestroy(): void {
+        // Nota: NO cerramos la conexión WebSocket aquí, solo nos desuscribimos de los observables
+        // Esto permite que la conexión persista cuando navegamos entre canales
         if (this.subMsg) this.subMsg.unsubscribe()
         if (this.subStatus) this.subStatus.unsubscribe()
     }
@@ -293,6 +360,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     // --- LÓGICA VISUAL ---
+
+    // En chat.component.ts
 
     private extractContent(m: WSMessage): string | null {
         const p = m.payload
@@ -305,15 +374,13 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         else if (data.text) content = data.text;
         else if (data.content) content = data.content;
         
-        if (content && content.startsWith('Conectado a comunidad')) return null
-        
-        // Retornar contenido vacío en lugar de null si hay archivo
-        // para que se muestre el mensaje con el archivo
-        return content || null
-    }
+        if (!content || content === 'null' || content === 'undefined') return null;
+    
+        if (content.trim().length === 0) return null;
 
-    renderMessage(m: WSMessage): string {
-        return this.extractContent(m) || ''
+        if (content.startsWith('Conectado a comunidad')) return null;
+        
+        return content;
     }
 
     getUserName(m: WSMessage): string {
@@ -383,6 +450,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         const current = this.messages[i]
         const prev = this.messages[i - 1]
         return this.getUserName(current) === this.getUserName(prev)
+    }
+
+    // Copia esto dentro de tu ChatComponent
+    renderMessage(m: WSMessage): string | null {
+        // Reutiliza la lógica de limpieza
+        return this.extractContent(m);
     }
 
     handleImageError(event: any, name: string) {
