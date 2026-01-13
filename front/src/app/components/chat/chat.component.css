@@ -18,6 +18,11 @@
   background-color: rgba(0, 0, 0, 0.2);
 }
 
+.chat-container {
+    height: 400px; /* Ajusta la altura según sea necesario */
+    overflow-y: auto; /* Permite el desplazamiento vertical */
+}
+
 /* Ajuste fino para el foco del input */
 input:focus {
     box-shadow: none;

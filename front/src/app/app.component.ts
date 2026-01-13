@@ -56,7 +56,7 @@ import { WebsocketService } from './services/websocket.service'
 			</nav>
 
 			<!-- Main Content -->
-			<div class="flex-1 overflow-hidden">
+			<div class="flex-1 overflow-y-auto">
 				<router-outlet></router-outlet>
 			</div>
 		</div>

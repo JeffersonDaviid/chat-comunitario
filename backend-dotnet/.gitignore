@@ -1,0 +1,12 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.dll
+*.exe
+*.pdb
+*.cache
+Migrations/
+src/assets/profiles/*.jpg
+src/assets/profiles/*.png

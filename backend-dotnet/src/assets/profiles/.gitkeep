@@ -1,0 +1,4 @@
+# Carpeta de imágenes de perfil
+
+Esta carpeta almacena las fotos de perfil de los usuarios.
+Las imágenes se guardan con el formato: `{cedula}.jpg`
