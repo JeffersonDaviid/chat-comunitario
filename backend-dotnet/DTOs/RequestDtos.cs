@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ChatComunitario.DTOs;
 
+/// <summary>
+/// DTO para registro de usuarios
+/// </summary>
 public class RegisterDto
 {
     [Required(ErrorMessage = "La cédula es requerida")]

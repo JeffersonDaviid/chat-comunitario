@@ -2,19 +2,43 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.ServiceModel.Channels;
 using ChatComunitario.Data;
 using ChatComunitario.Hubs;
+using ChatComunitario.Repositories;
+using ChatComunitario.Services;
+using ChatComunitario.Interfaces;
+using ChatComunitario.Utils;
+using ChatComunitario.SoapServices;
+using SoapCore;
+using System.ServiceModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-// builder.Services.AddSwaggerGen(); // Comentado temporalmente por incompatibilidad con .NET 10
+// SOAP Services (reemplaza a REST Controllers)
+builder.Services.AddScoped<IAuthSoapService, AuthSoapService>();
+builder.Services.AddScoped<ICommunitySoapService, CommunitySoapService>();
+builder.Services.AddScoped<IChannelSoapService, ChannelSoapService>();
 
 // PostgreSQL Database Context
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Service-Oriented Architecture (SOA) - Dependency Injection
+// Repositorios
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<CommunityRepository>();
+builder.Services.AddScoped<ChannelRepository>();
+builder.Services.AddScoped<MessageRepository>();
+
+// Servicios
+builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddScoped<IUtilityService, UtilityService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICommunityService, CommunityService>();
+builder.Services.AddScoped<IChannelService, ChannelService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
 
 // CORS Configuration
 builder.Services.AddCors(options =>
@@ -73,12 +97,6 @@ builder.Services.AddSignalR();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    // app.UseSwagger(); // Comentado temporalmente por incompatibilidad con .NET 10
-    // app.UseSwaggerUI(); // Comentado temporalmente por incompatibilidad con .NET 10
-}
-
 app.UseCors("AllowAll");
 
 // Serve static files for profile images
@@ -87,19 +105,41 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+// SOAP Endpoints con WSDL
+var encoderOptions = new SoapEncoderOptions 
+{ 
+    WriteEncoding = Encoding.UTF8,
+    MessageVersion = MessageVersion.Soap11 
+};
+SoapEndpointExtensions.UseSoapEndpoint<IAuthSoapService>((IApplicationBuilder)app, "/AuthService.svc", encoderOptions, SoapSerializer.DataContractSerializer);
+SoapEndpointExtensions.UseSoapEndpoint<ICommunitySoapService>((IApplicationBuilder)app, "/CommunityService.svc", encoderOptions, SoapSerializer.DataContractSerializer);
+SoapEndpointExtensions.UseSoapEndpoint<IChannelSoapService>((IApplicationBuilder)app, "/ChannelService.svc", encoderOptions, SoapSerializer.DataContractSerializer);
 
-// SignalR Hub endpoint
+// SignalR Hub endpoint (se mantiene para tiempo real)
 app.MapHub<ChatHub>("/ws");
 
-app.MapGet("/", () => "<h2>Bienvenido a CHAT COMUNITARIO - .NET Core</h2>")
+app.MapGet("/", () => Results.Content(@"
+<html>
+<head><title>Chat Comunitario - SOAP/WSDL Services</title></head>
+<body style='font-family: Arial; padding: 40px;'>
+<h1>🌐 Chat Comunitario - Servicios SOAP</h1>
+<p>Servicios SOAP disponibles con WSDL:</p>
+<ul>
+<li><a href='/AuthService.svc?wsdl'>AuthService WSDL</a> - Autenticación y usuarios</li>
+<li><a href='/CommunityService.svc?wsdl'>CommunityService WSDL</a> - Gestión de comunidades</li>
+<li><a href='/ChannelService.svc?wsdl'>ChannelService WSDL</a> - Gestión de canales</li>
+<li><a href='/ws'>SignalR Hub</a> - Chat en tiempo real</li>
+</ul>
+<p>Puerto: 5000 | Base URL: http://localhost:5000</p>
+</body>
+</html>", "text/html"))
    .WithName("Home");
 
 // Apply migrations and seed data
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
+    await dbContext.Database.MigrateAsync();
 }
 
-app.Run();
+await app.RunAsync();
