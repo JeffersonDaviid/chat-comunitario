@@ -30,7 +30,9 @@ public class AuthService : IAuthService
     {
         try
         {
-            // Validar cédula
+            // Limpiar y validar cédula
+            dto.Cedula = dto.Cedula?.Trim() ?? "";
+            
             if (!_utilityService.ValidateEcuadorianCedula(dto.Cedula))
             {
                 throw new ValidationException("Cédula ecuatoriana inválida");
@@ -61,7 +63,8 @@ public class AuthService : IAuthService
                 Phone = dto.Phone,
                 Address = dto.Address,
                 Latitude = dto.Latitude,
-                Longitude = dto.Longitude
+                Longitude = dto.Longitude,
+                ProfileImg = dto.ProfileImg
             };
 
             await _userRepository.AddAsync(user);

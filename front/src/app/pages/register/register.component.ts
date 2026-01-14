@@ -8,6 +8,7 @@ import {
 	ValidationErrors,
 } from '@angular/forms'
 import { HttpClientModule, HttpErrorResponse } from '@angular/common/http'
+import { Router } from '@angular/router'
 import { AuthService } from '../../services/auth.service'
 
 @Component({
@@ -20,6 +21,7 @@ import { AuthService } from '../../services/auth.service'
 export class RegisterComponent implements OnInit {
 	fb = inject(FormBuilder)
 	auth = inject(AuthService)
+	router = inject(Router)
 
 	loading = false
 	successMsg = ''
@@ -198,14 +200,14 @@ export class RegisterComponent implements OnInit {
 		this.auth
 			.register(
 				{
-					cedula: this.f.cedula.value || '',
-					name: this.f.name.value || '',
-					lastName: this.f.lastName.value || '',
-					email: this.f.email.value || '',
+					cedula: (this.f.cedula.value || '').trim(),
+					name: (this.f.name.value || '').trim(),
+					lastName: (this.f.lastName.value || '').trim(),
+					email: (this.f.email.value || '').trim(),
 					password: this.f.password.value || '',
 					confirmPassword: this.f.confirmPassword.value || '',
-					phone: this.f.phone.value || '',
-					address: this.f.address.value || '',
+					phone: (this.f.phone.value || '').trim(),
+					address: (this.f.address.value || '').trim(),
 					latitude: this.f.latitude.value || 0,
 					longitude: this.f.longitude.value || 0,
 				},
@@ -213,12 +215,14 @@ export class RegisterComponent implements OnInit {
 			)
 			.subscribe({
 				next: (res) => {
-					this.successMsg = res?.message || 'Registro exitoso'
-					this.form.reset()
-					this.selectedFile = null
-					this.imagePreview = null
-					this.hasLocation = false
 					this.loading = false
+					// Obtener nombre del usuario registrado
+					const userName = this.f.name.value || 'Usuario'
+					// Redirigir al dashboard con mensaje de bienvenida
+					this.router.navigateByUrl('/dashboard').then(() => {
+						// Puedes usar un servicio de notificaciones o simplemente confiar en que el usuario está autenticado
+						console.log(`¡Bienvenido ${userName}! Registro exitoso.`)
+					})
 				},
 				error: (err: HttpErrorResponse) => {
 					const msg = (err.error && (err.error.message || err.error.error)) || err.message

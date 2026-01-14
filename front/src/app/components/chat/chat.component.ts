@@ -57,10 +57,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     ngOnInit(): void {
         this.communityId = this.route.snapshot.paramMap.get('communityId') || ''
         this.channelId = this.route.snapshot.paramMap.get('channelId') || ''
-        this.cedula = localStorage.getItem('cedula') || ''
-        this.loadUserDataFromService();
-
-        console.log('Logueado como:', this.myFullName, 'Cédula:', this.cedula);
+		this.cedula = sessionStorage.getItem('cedula') || ''
         console.log(`[Chat] Componente iniciado - Community: ${this.communityId}, Channel: ${this.channelId}`)
 
         // PRIMERO: Obtener nombres de comunidad y canal desde la API

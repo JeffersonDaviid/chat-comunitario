@@ -46,17 +46,17 @@ export class WebsocketService implements OnDestroy {
      * Inicializa la conexión SignalR
      */
     private initializeConnection() {
-        const token = localStorage.getItem('auth_token') || ''
-        
-        this.connection = new signalR.HubConnectionBuilder()
-            .withUrl(this.HUB_URL, {
-                accessTokenFactory: () => token
-            })
-            .withAutomaticReconnect({
-                nextRetryDelayInMilliseconds: () => 3000
-            })
-            .configureLogging(signalR.LogLevel.Information)
-            .build()
+		const token = sessionStorage.getItem('auth_token') || ''
+		
+		this.connection = new signalR.HubConnectionBuilder()
+			.withUrl(this.HUB_URL, {
+				accessTokenFactory: () => token
+			})
+			.withAutomaticReconnect({
+				nextRetryDelayInMilliseconds: () => 3000
+			})
+			.configureLogging(signalR.LogLevel.Information)
+			.build()
 
         // Configurar event handlers
         this.setupEventHandlers()
@@ -111,10 +111,15 @@ export class WebsocketService implements OnDestroy {
         })
 
         // Evento de cierre
-        this.connection.onclose(() => {
-            console.log('[SignalR] Conexión cerrada')
-            this.connectionStatus$.next(false)
-        })
+		this.connection.onclose((error) => {
+			console.log('[SignalR] Conexión cerrada', error)
+			this.connectionStatus$.next(false)
+			
+			// Si hay error y el usuario tiene sesión, podria ser backend caído
+			if (error && sessionStorage.getItem('auth_token')) {
+				console.warn('[SignalR] Backend posiblemente caído')
+			}
+		})
     }
 
     /**
@@ -175,18 +180,18 @@ export class WebsocketService implements OnDestroy {
      */
     public async setIdentity(params: WSConnectParams, reconnect = true): Promise<void> {
         this.lastParams = params
-        localStorage.setItem('communityId', params.communityId)
-        localStorage.setItem('cedula', params.cedula)
+		sessionStorage.setItem('communityId', params.communityId)
+		sessionStorage.setItem('cedula', params.cedula)
 
-        if (reconnect) {
-            // Conectar si no está conectado
-            if (this.connection?.state !== signalR.HubConnectionState.Connected) {
-                await this.connect()
-            }
+		if (reconnect) {
+			// Conectar si no está conectado
+			if (this.connection?.state !== signalR.HubConnectionState.Connected) {
+				await this.connect()
+			}
 
-            // Unirse al canal
-            await this.joinChannel(params)
-        }
+			// Unirse al canal
+			await this.joinChannel(params)
+		}
     }
 
     /**

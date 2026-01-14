@@ -100,7 +100,17 @@ var app = builder.Build();
 app.UseCors("AllowAll");
 
 // Serve static files for profile images
-app.UseStaticFiles();
+var profilesPath = Path.Combine(Directory.GetCurrentDirectory(), "src", "assets", "profiles");
+if (!Directory.Exists(profilesPath))
+{
+    Directory.CreateDirectory(profilesPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(profilesPath),
+    RequestPath = "/profiles"
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

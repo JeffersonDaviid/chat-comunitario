@@ -41,6 +41,8 @@ public class RegisterDto
 
     [Range(-180, 180, ErrorMessage = "Longitud inválida")]
     public double Longitude { get; set; }
+
+    public string? ProfileImg { get; set; }
 }
 
 public class LoginDto

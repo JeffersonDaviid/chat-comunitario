@@ -36,95 +36,161 @@ public interface ICommunitySoapService
 }
 
 // Request/Response models
+[DataContract]
 public class CreateCommunityRequest
 {
-    public string Title { get; set; } = string.Empty;
+    [DataMember(Order = 0)]
     public string Description { get; set; } = string.Empty;
+    
+    [DataMember(Order = 1)]
     public string OwnerCedula { get; set; } = string.Empty;
+    
+    [DataMember(Order = 2)]
+    public string Title { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class CreateCommunityResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
+    
+    [DataMember]
     public CommunityResponse? Community { get; set; }
 }
 
+[DataContract]
 public class GetAllCommunitiesResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
+    
+    [DataMember]
     public List<CommunityResponse> Communities { get; set; } = new();
 }
 
+[DataContract]
 public class GetCommunitiesByUserRequest
 {
+    [DataMember]
     public string Cedula { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class GetCommunitiesByUserResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
+    
+    [DataMember]
     public List<CommunityResponse> Communities { get; set; } = new();
 }
 
+[DataContract]
 public class GetCommunityByIdRequest
 {
+    [DataMember]
     public Guid Id { get; set; }
 }
 
+[DataContract]
 public class GetCommunityByIdResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
+    
+    [DataMember]
     public CommunityResponse? Community { get; set; }
 }
 
+[DataContract]
 public class UpdateCommunityRequest
 {
-    public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
+    [DataMember(Order = 0)]
     public string Description { get; set; } = string.Empty;
+    
+    [DataMember(Order = 1)]
+    public Guid Id { get; set; }
+    
+    [DataMember(Order = 2)]
+    public string Title { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class UpdateCommunityResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class DeleteCommunityRequest
 {
+    [DataMember]
     public Guid Id { get; set; }
 }
 
+[DataContract]
 public class DeleteCommunityResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class AddMemberRequest
 {
+    [DataMember(Order = 0)]
     public Guid CommunityId { get; set; }
+    
+    [DataMember(Order = 1)]
     public string CedulaMember { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class AddMemberResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class RemoveMemberRequest
 {
+    [DataMember(Order = 0)]
     public Guid CommunityId { get; set; }
+    
+    [DataMember(Order = 1)]
     public string Cedula { get; set; } = string.Empty;
 }
 
+[DataContract]
 public class RemoveMemberResponse
 {
+    [DataMember]
     public bool Success { get; set; }
+    
+    [DataMember]
     public string Message { get; set; } = string.Empty;
 }

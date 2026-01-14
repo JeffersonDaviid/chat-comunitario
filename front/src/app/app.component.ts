@@ -68,12 +68,12 @@ export class AppComponent {
 	constructor(private router: Router, private ws: WebsocketService) {}
 
 	isLogged(): boolean {
-		return !!localStorage.getItem('user')
+		return !!sessionStorage.getItem('user')
 	}
 
 	currentUserName(): string {
 		try {
-			const raw = localStorage.getItem('user')
+			const raw = sessionStorage.getItem('user')
 			if (!raw) return ''
 			const u = JSON.parse(raw)
 			const name = [u?.name, u?.lastName].filter(Boolean).join(' ').trim()
@@ -85,7 +85,7 @@ export class AppComponent {
 
 	profileUrl(): string {
 		try {
-			const cedula = localStorage.getItem('cedula')
+			const cedula = sessionStorage.getItem('cedula')
 			if (!cedula) return ''
 			return `http://localhost:3000/assets/profiles/${cedula}.jpg`
 		} catch {
@@ -97,10 +97,10 @@ export class AppComponent {
 		try {
 			this.ws.close()
 		} catch {}
-		localStorage.removeItem('auth_token')
-		localStorage.removeItem('user')
-		localStorage.removeItem('cedula')
-		localStorage.removeItem('communityId')
+		sessionStorage.removeItem('auth_token')
+		sessionStorage.removeItem('user')
+		sessionStorage.removeItem('cedula')
+		sessionStorage.removeItem('communityId')
 		this.router.navigateByUrl('/login')
 	}
 

@@ -38,12 +38,23 @@ export class LoginComponent {
 		this.loading = true
 		this.auth.login(this.f.email.value || '', this.f.password.value || '').subscribe({
 			next: () => {
+				console.log('Login successful')
 				this.loading = false
 				this.router.navigateByUrl('/dashboard')
 			},
-			error: (err: HttpErrorResponse) => {
-				const msg = (err.error && (err.error.message || err.error.error)) || err.message
-				this.errorMsg = msg || 'Error al iniciar sesión'
+			error: (err: any) => {
+				console.error('Login error:', err)
+				let msg = 'Error al iniciar sesión'
+				
+				if (err instanceof HttpErrorResponse) {
+					msg = (err.error && (err.error.message || err.error.error)) || err.message || msg
+				} else if (err.message) {
+					msg = err.message
+				} else if (typeof err === 'string') {
+					msg = err
+				}
+				
+				this.errorMsg = msg
 				this.loading = false
 			},
 		})
