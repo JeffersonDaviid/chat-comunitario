@@ -87,7 +87,7 @@ export class AppComponent {
 		try {
 			const cedula = sessionStorage.getItem('cedula')
 			if (!cedula) return ''
-			return `http://localhost:3000/assets/profiles/${cedula}.jpg`
+			return `http://localhost:5000/assets/profiles/${cedula}.jpg`
 		} catch {
 			return ''
 		}

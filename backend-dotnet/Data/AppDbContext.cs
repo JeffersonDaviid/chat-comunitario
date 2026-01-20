@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<Community> Communities { get; set; }
     public DbSet<CommunityMember> CommunityMembers { get; set; }
     public DbSet<Channel> Channels { get; set; }
+    public DbSet<ChannelMember> ChannelMembers { get; set; }
     public DbSet<Message> Messages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -59,6 +60,23 @@ public class AppDbContext : DbContext
             entity.HasOne(ch => ch.Community)
                   .WithMany(c => c.Channels)
                   .HasForeignKey(ch => ch.CommunityId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ChannelMember configuration
+        modelBuilder.Entity<ChannelMember>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ChannelId, e.UserCedula }).IsUnique();
+
+            entity.HasOne(cm => cm.Channel)
+                  .WithMany(c => c.Members)
+                  .HasForeignKey(cm => cm.ChannelId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(cm => cm.User)
+                  .WithMany()
+                  .HasForeignKey(cm => cm.UserCedula)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

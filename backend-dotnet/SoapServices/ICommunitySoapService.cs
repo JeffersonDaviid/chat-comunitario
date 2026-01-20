@@ -33,6 +33,12 @@ public interface ICommunitySoapService
 
     [OperationContract]
     Task<RemoveMemberResponse> RemoveMember(RemoveMemberRequest request);
+
+    [OperationContract]
+    Task<GetAvailableUsersResponse> GetAvailableUsers(GetAvailableUsersRequest request);
+
+    [OperationContract]
+    Task<InviteUsersResponse> InviteUsers(InviteUsersRequest request);
 }
 
 // Request/Response models
@@ -193,4 +199,46 @@ public class RemoveMemberResponse
     
     [DataMember]
     public string Message { get; set; } = string.Empty;
+}
+[DataContract]
+public class GetAvailableUsersRequest
+{
+    [DataMember]
+    public string ExcludeCedula { get; set; } = string.Empty;
+}
+
+[DataContract]
+public class GetAvailableUsersResponse
+{
+    [DataMember]
+    public bool Success { get; set; }
+    
+    [DataMember]
+    public string Message { get; set; } = string.Empty;
+    
+    [DataMember]
+    public List<UserResponse> Users { get; set; } = new();
+}
+
+[DataContract]
+public class InviteUsersRequest
+{
+    [DataMember(Order = 0)]
+    public Guid CommunityId { get; set; }
+    
+    [DataMember(Order = 1)]
+    public List<string> UserCedulas { get; set; } = new();
+}
+
+[DataContract]
+public class InviteUsersResponse
+{
+    [DataMember]
+    public bool Success { get; set; }
+    
+    [DataMember]
+    public string Message { get; set; } = string.Empty;
+    
+    [DataMember]
+    public List<string> InvitedUsers { get; set; } = new();
 }

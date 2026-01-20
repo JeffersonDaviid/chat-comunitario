@@ -6,11 +6,12 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms'
 import { CommunityService } from '../../services/community.service'
 import { ChannelService } from '../../services/channel.service'
 import { AuthService } from '../../services/auth.service'
+import { InviteUsersModalComponent } from '../../components/invite-users-modal/invite-users-modal.component'
 
 @Component({
 	selector: 'app-dashboard',
 	standalone: true,
-	imports: [CommonModule, HttpClientModule, ReactiveFormsModule],
+	imports: [CommonModule, HttpClientModule, ReactiveFormsModule, InviteUsersModalComponent],
 	templateUrl: './dashboard.component.html',
 	styleUrl: './dashboard.component.css',
 })
@@ -26,6 +27,7 @@ export class DashboardComponent implements OnInit {
 		id: string
 		title: string
 		description: string
+		ownerCedula: string
 		channels: any[]
 	}> = []
 	loading = false
@@ -35,6 +37,8 @@ export class DashboardComponent implements OnInit {
 	showCreateCommunityModal = false
 	creatingCommunity = false
 	createCommunityError = ''
+	showInviteModal = false
+	lastCreatedCommunityId = ''
 
 	// Modal states para canales
 	showCreateChannelModal = false
@@ -84,8 +88,10 @@ export class DashboardComponent implements OnInit {
 
 	fetchCommunities() {
 		this.loading = true
+		console.log('[Dashboard] Fetching communities for cedula:', this.userCedula)
 		this.community.getCommunitiesByUser(this.userCedula).subscribe({
 			next: (res) => {
+				console.log('[Dashboard] Communities response:', res)
 				this.communities = res?.communities || []
 				this.loading = false
 			},
@@ -98,6 +104,10 @@ export class DashboardComponent implements OnInit {
 
 	goChannel(commId: string, channelId: string) {
 		this.router.navigate(['/chat', commId, channelId])
+	}
+
+	isOwner(communityCedula: string): boolean {
+		return this.userCedula === communityCedula
 	}
 
 	// Sidebar actions
@@ -131,8 +141,11 @@ export class DashboardComponent implements OnInit {
 		this.community.createCommunity(payload).subscribe({
 			next: (res) => {
 				if (res.success) {
+					// Guardar ID de la comunidad creada
+					this.lastCreatedCommunityId = res.community?.id || ''
+					// Abrir modal de invitación
 					this.closeCreateCommunityModal()
-					this.fetchCommunities()
+					this.showInviteModal = true
 				} else {
 					this.createCommunityError = res.message || 'Error al crear comunidad'
 				}
@@ -253,6 +266,33 @@ export class DashboardComponent implements OnInit {
 		} else {
 			this.sidebarExpanded = false
 		}
+	}
+
+	onInviteUsersSelected(selectedCedulas: string[]) {
+		if (!this.lastCreatedCommunityId || selectedCedulas.length === 0) {
+			this.showInviteModal = false
+			this.fetchCommunities()
+			return
+		}
+
+		this.community.inviteUsers(this.lastCreatedCommunityId, selectedCedulas).subscribe({
+			next: (res) => {
+				console.log('Invitación resultado:', res)
+				this.showInviteModal = false
+				this.fetchCommunities()
+			},
+			error: (err) => {
+				console.error('Error invitando usuarios:', err)
+				this.showInviteModal = false
+				this.fetchCommunities()
+			},
+		})
+	}
+
+	closeInviteModal() {
+		this.showInviteModal = false
+		this.lastCreatedCommunityId = ''
+		this.fetchCommunities()
 	}
 
 	get f() {

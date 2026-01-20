@@ -63,6 +63,9 @@ public class CommunityResponse
     public string Description { get; set; } = string.Empty;
     
     [DataMember]
+    public string OwnerCedula { get; set; } = string.Empty;
+    
+    [DataMember]
     public UserResponse Owner { get; set; } = new();
     
     [DataMember]

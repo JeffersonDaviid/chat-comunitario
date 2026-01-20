@@ -13,7 +13,7 @@ export interface Channel {
 
 @Injectable({ providedIn: 'root' })
 export class ChannelService {
-	private readonly channelServiceUrl = 'http://localhost:3000/ChannelService.svc'
+	private readonly channelServiceUrl = 'http://localhost:5000/ChannelService.svc'
 
 	constructor(
 		private http: HttpClient,

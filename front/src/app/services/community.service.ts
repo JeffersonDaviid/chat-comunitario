@@ -15,7 +15,7 @@ export interface Community {
 
 @Injectable({ providedIn: 'root' })
 export class CommunityService {
-	private readonly communityServiceUrl = 'http://localhost:3000/CommunityService.svc'
+	private readonly communityServiceUrl = 'http://localhost:5000/CommunityService.svc'
 
 	constructor(
 		private http: HttpClient,
@@ -58,12 +58,17 @@ export class CommunityService {
 
 	// READ - Obtener comunidades por usuario
 	getCommunitiesByUser(cedula: string): Observable<any> {
-		const requestBody = this.soap.buildRequestBody({ userCedula: cedula })
+		const requestBody = this.soap.buildRequestBody({ cedula: cedula })
 
 		return this.soap.call(this.communityServiceUrl, 'GetCommunitiesByUser', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.GetCommunitiesByUserResult || soapResponse
-				const communities = this.extractArray(result?.Communities).map((c: any) => this.parseCommunity(c))
+				console.log('[Community] GetCommunitiesByUser result:', result)
+				console.log('[Community] Communities node:', result?.Communities)
+				const communitiesNode = result?.Communities?.CommunityResponse || result?.Communities
+				console.log('[Community] Communities node after extract:', communitiesNode)
+				const communities = this.extractArray(communitiesNode).map((c: any) => this.parseCommunity(c))
+				console.log('[Community] Parsed communities count:', communities.length)
 				return { success: true, communities }
 			})
 		)
@@ -152,6 +157,35 @@ export class CommunityService {
 		)
 	}
 
+	// GET - Obtener usuarios disponibles para invitar
+	getAvailableUsers(excludeCedula: string): Observable<any> {
+		const requestBody = this.soap.buildRequestBody({
+			excludeCedula: excludeCedula
+		})
+
+		return this.soap.call(this.communityServiceUrl, 'GetAvailableUsers', requestBody).pipe(
+			map((soapResponse) => {
+				const result = soapResponse?.GetAvailableUsersResult || soapResponse
+				return this.parseAvailableUsersResponse(result)
+			})
+		)
+	}
+
+	// POST - Invitar múltiples usuarios a una comunidad
+	inviteUsers(communityId: string, userCedulas: string[]): Observable<any> {
+		const requestBody = this.soap.buildRequestBody({
+			communityId: communityId,
+			userCedulas: userCedulas
+		})
+
+		return this.soap.call(this.communityServiceUrl, 'InviteUsers', requestBody).pipe(
+			map((soapResponse) => {
+				const result = soapResponse?.InviteUsersResult || soapResponse
+				return this.parseInviteResponse(result)
+			})
+		)
+	}
+
 	// Helper methods
 	private parseCommunityResponse(result: any): any {
 		const success = this.extractText(result?.Success)
@@ -183,5 +217,36 @@ export class CommunityService {
 	private extractArray(node: any): any[] {
 		if (!node) return []
 		return Array.isArray(node) ? node : [node]
+	}
+
+	private parseAvailableUsersResponse(result: any): any {
+		const success = this.extractText(result?.Success)
+		const message = this.extractText(result?.Message)
+		const usersNode = result?.Users
+		const users = this.parseUsersList(usersNode)
+
+		return { success, message, users }
+	}
+
+	private parseInviteResponse(result: any): any {
+		const success = this.extractText(result?.Success)
+		const message = this.extractText(result?.Message)
+		const invitedUsersNode = result?.InvitedUsers
+		const invitedUsers = this.extractArray(invitedUsersNode?.string || invitedUsersNode)
+
+		return { success, message, invitedUsers }
+	}
+
+	private parseUsersList(node: any): any[] {
+		if (!node) return []
+		
+		const users = this.extractArray(node?.UserResponse || node)
+		return users.map(u => ({
+			cedula: this.extractText(u?.Cedula),
+			name: this.extractText(u?.Name),
+			lastName: this.extractText(u?.LastName),
+			email: this.extractText(u?.Email),
+			profileImg: this.extractText(u?.ProfileImg)
+		}))
 	}
 }

@@ -60,9 +60,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 		this.cedula = sessionStorage.getItem('cedula') || ''
         console.log(`[Chat] Componente iniciado - Community: ${this.communityId}, Channel: ${this.channelId}`)
 
+        // Cargar datos del usuario
+        this.loadUserDataFromService()
+
         // PRIMERO: Obtener nombres de comunidad y canal desde la API
         if (this.communityId && this.channelId) {
-            this.http.get<any>(`http://localhost:3000/api/community/${this.communityId}`).subscribe({
+            this.http.get<any>(`http://localhost:5000/api/community/${this.communityId}`).subscribe({
                 next: (res) => {
                     const community = res.community
                     this.communityName = community.title || ''
@@ -149,7 +152,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         console.log(`[Chat] Iniciando carga de historial...`)
         this.http
             .get<any>(
-                `http://localhost:3000/api/auth/communities/${this.communityId}/channels/${this.channelId}/messages`
+                `http://localhost:5000/api/auth/communities/${this.communityId}/channels/${this.channelId}/messages`
             )
             .subscribe({
                 next: (res) => {
@@ -221,7 +224,15 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     
 
     send() {
-        if (!this.outMsg.trim() && !this.filePreview) return
+        if (!this.outMsg.trim() && !this.filePreview) {
+            console.warn('[Chat] Intento de envío con mensaje vacío')
+            return
+        }
+
+        if (!this.connected) {
+            alert('No estás conectado. Espera a que se establezca la conexión WebSocket.')
+            return
+        }
 
         const messagePayload: any = {
             text: this.outMsg.trim(),
@@ -245,11 +256,27 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                     data: base64Data
                 }
                 
+                console.log('[Chat] Enviando mensaje con archivo:', {
+                    fileName: this.filePreview!.file.name,
+                    fileSize: this.filePreview!.file.size,
+                    hasText: !!this.outMsg.trim()
+                })
+                
                 this.ws.sendChannelMessage(this.channelId, messagePayload)
                 this.resetForm()
             }
+            reader.onerror = (err) => {
+                console.error('[Chat] Error al leer archivo:', err)
+                alert('Error al procesar el archivo. Intenta de nuevo.')
+            }
             reader.readAsDataURL(this.filePreview.file)
         } else {
+            console.log('[Chat] Enviando mensaje de texto:', {
+                textLength: this.outMsg.length,
+                cedula: this.cedula,
+                channelId: this.channelId
+            })
+            
             this.ws.sendChannelMessage(this.channelId, messagePayload)
             this.resetForm()
             this.shouldScrollToBottom = true

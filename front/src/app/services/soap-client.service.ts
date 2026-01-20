@@ -12,6 +12,8 @@ export class SoapClientService {
 	 */
 	call(endpoint: string, operation: string, body: string): Observable<any> {
 		const soapEnvelope = this.buildSoapEnvelope(operation, body)
+		console.log('[SOAP] Request Body:', body)
+		console.log('[SOAP] Full Envelope:', soapEnvelope)
 		
 		const headers = new HttpHeaders({
 			'Content-Type': 'text/xml; charset=utf-8',
@@ -136,8 +138,22 @@ export class SoapClientService {
 	buildRequestBody(params: Record<string, any>): string {
 		let xml = ''
 		
-		// Ordenar alfabéticamente las keys (DataContractSerializer lo requiere)
+		// Definir el orden según DataMember Order en el backend
+		const keyOrder: Record<string, number> = {
+			'communityId': 0,
+			'userCedulas': 1,
+			'excludeCedula': 0,
+			'cedula': 0,
+			'title': 0,
+			'description': 1,
+			'ownerCedula': 2,
+		}
+		
+		// Ordenar las keys por el orden especificado
 		const sortedKeys = Object.keys(params).sort((a, b) => {
+			const orderA = keyOrder[a] ?? 999
+			const orderB = keyOrder[b] ?? 999
+			if (orderA !== orderB) return orderA - orderB
 			const aCapitalized = a.charAt(0).toUpperCase() + a.slice(1)
 			const bCapitalized = b.charAt(0).toUpperCase() + b.slice(1)
 			return aCapitalized.localeCompare(bCapitalized)
@@ -147,7 +163,17 @@ export class SoapClientService {
 			const value = params[key]
 			if (value !== null && value !== undefined) {
 				const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1)
-				xml += `<dat:${capitalizedKey}>${this.escapeXml(String(value))}</dat:${capitalizedKey}>\n`
+				
+				// Manejar arrays
+				if (Array.isArray(value)) {
+					xml += `<${capitalizedKey}>\n`
+					for (const item of value) {
+						xml += `  <string>${this.escapeXml(String(item))}</string>\n`
+					}
+					xml += `</${capitalizedKey}>\n`
+				} else {
+					xml += `<${capitalizedKey}>${this.escapeXml(String(value))}</${capitalizedKey}>\n`
+				}
 			}
 		}
 		return xml

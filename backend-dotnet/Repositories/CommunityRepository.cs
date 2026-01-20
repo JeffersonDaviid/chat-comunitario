@@ -26,7 +26,7 @@ public class CommunityRepository : Repository<Community>
             .Include(c => c.Owner)
             .Include(c => c.Members).ThenInclude(m => m.User)
             .Include(c => c.Channels)
-            .Where(c => c.Members.Any(m => m.UserCedula == cedula))
+            .Where(c => c.OwnerCedula == cedula || c.Members.Any(m => m.UserCedula == cedula))
             .ToListAsync();
     }
 

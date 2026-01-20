@@ -6,8 +6,8 @@ import { SoapClientService } from './soap-client.service'
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-	private readonly authServiceUrl = 'http://localhost:3000/AuthService.svc'
-	private readonly baseFiles = 'http://localhost:3000'
+	private readonly authServiceUrl = 'http://localhost:5000/AuthService.svc'
+	private readonly baseFiles = 'http://localhost:5000'
 	private healthCheckInterval?: any
 
 	constructor(

@@ -71,13 +71,20 @@ public class CommunityService : ICommunityService
     {
         try
         {
+            Console.WriteLine($"[DEBUG] GetCommunitiesByUserAsync called with cedula: '{cedula}'");
             var communities = await _communityRepository.GetByUserCedulaAsync(cedula);
+            Console.WriteLine($"[DEBUG] Found {communities.Count()} communities");
             var responses = communities.Select(MapCommunityToResponse).ToList();
+            foreach (var resp in responses)
+            {
+                Console.WriteLine($"[DEBUG] Community: {resp.Title}, Owner: {resp.OwnerCedula}");
+            }
 
             return (true, responses, "Comunidades del usuario obtenidas exitosamente");
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[DEBUG] Error in GetCommunitiesByUserAsync: {ex.Message}");
             return (false, new List<CommunityResponse>(), $"Error: {ex.Message}");
         }
     }
@@ -246,6 +253,7 @@ public class CommunityService : ICommunityService
             Id = community.Id,
             Title = community.Title,
             Description = community.Description,
+            OwnerCedula = community.OwnerCedula,
             Owner = new UserResponse
             {
                 Cedula = community.Owner.Cedula,

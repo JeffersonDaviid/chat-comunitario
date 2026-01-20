@@ -24,4 +24,5 @@ public class Channel
     public Community Community { get; set; } = null!;
 
     public ICollection<Message> Messages { get; set; } = new List<Message>();
+    public ICollection<ChannelMember> Members { get; set; } = new List<ChannelMember>();
 }

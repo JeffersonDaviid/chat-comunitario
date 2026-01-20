@@ -1,5 +1,6 @@
 using ChatComunitario.DTOs;
 using ChatComunitario.Interfaces;
+using ChatComunitario.Repositories;
 
 namespace ChatComunitario.SoapServices;
 
@@ -9,10 +10,12 @@ namespace ChatComunitario.SoapServices;
 public class CommunitySoapService : ICommunitySoapService
 {
     private readonly ICommunityService _communityService;
+    private readonly UserRepository _userRepository;
 
-    public CommunitySoapService(ICommunityService communityService)
+    public CommunitySoapService(ICommunityService communityService, UserRepository userRepository)
     {
         _communityService = communityService;
+        _userRepository = userRepository;
     }
 
     public async Task<CreateCommunityResponse> CreateCommunity(CreateCommunityRequest request)
@@ -55,6 +58,7 @@ public class CommunitySoapService : ICommunitySoapService
 
     public async Task<GetCommunitiesByUserResponse> GetCommunitiesByUser(GetCommunitiesByUserRequest request)
     {
+        Console.WriteLine($"[DEBUG] GetCommunitiesByUser called with cedula: {request.Cedula}");
         var (success, communities, message) = await _communityService.GetCommunitiesByUserAsync(request.Cedula);
 
         return new GetCommunitiesByUserResponse
@@ -131,5 +135,93 @@ public class CommunitySoapService : ICommunitySoapService
             Success = success,
             Message = message
         };
+    }
+
+    public async Task<GetAvailableUsersResponse> GetAvailableUsers(GetAvailableUsersRequest request)
+    {
+        try
+        {
+            var allUsers = await _userRepository.GetAllAsync();
+            var availableUsers = allUsers
+                .Where(u => u.Cedula != request.ExcludeCedula)
+                .Select(u => new UserResponse
+                {
+                    Cedula = u.Cedula,
+                    Name = u.Name,
+                    LastName = u.LastName,
+                    Email = u.Email,
+                    ProfileImg = u.ProfileImg
+                })
+                .ToList();
+
+            return new GetAvailableUsersResponse
+            {
+                Success = true,
+                Message = "Usuarios disponibles obtenidos exitosamente",
+                Users = availableUsers
+            };
+        }
+        catch (Exception ex)
+        {
+            return new GetAvailableUsersResponse
+            {
+                Success = false,
+                Message = $"Error: {ex.Message}",
+                Users = new List<UserResponse>()
+            };
+        }
+    }
+
+    public async Task<InviteUsersResponse> InviteUsers(InviteUsersRequest request)
+    {
+        Console.WriteLine($"[DEBUG] InviteUsers called with CommunityId: {request.CommunityId}, UserCedulas count: {request.UserCedulas?.Count ?? 0}");
+        if (request.UserCedulas != null)
+        {
+            foreach (var cedula in request.UserCedulas)
+            {
+                Console.WriteLine($"[DEBUG] Cedula to invite: {cedula}");
+            }
+        }
+        
+        var invitedUsers = new List<string>();
+        var errors = new List<string>();
+
+        try
+        {
+            foreach (var cedula in request.UserCedulas)
+            {
+                var (success, message) = await _communityService.AddMemberAsync(request.CommunityId, new AddMemberDto { CedulaMember = cedula });
+                
+                if (success)
+                {
+                    invitedUsers.Add(cedula);
+                }
+                else
+                {
+                    errors.Add($"{cedula}: {message}");
+                }
+            }
+
+            var finalMessage = errors.Count == 0 
+                ? $"Se invitaron exitosamente {invitedUsers.Count} usuarios" 
+                : $"Se invitaron {invitedUsers.Count} usuarios. Errores: {string.Join("; ", errors)}";
+
+            return new InviteUsersResponse
+            {
+                Success = errors.Count == 0,
+                Message = finalMessage,
+                InvitedUsers = invitedUsers
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] Error in InviteUsers: {ex.Message}");
+            return new InviteUsersResponse
+            {
+                Success = false,
+                Message = $"Error: {ex.Message}",
+                InvitedUsers = invitedUsers
+            };
+        }
     }
 }

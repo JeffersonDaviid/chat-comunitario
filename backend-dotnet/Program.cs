@@ -30,6 +30,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<CommunityRepository>();
 builder.Services.AddScoped<ChannelRepository>();
+builder.Services.AddScoped<ChannelMemberRepository>();
 builder.Services.AddScoped<MessageRepository>();
 
 // Servicios

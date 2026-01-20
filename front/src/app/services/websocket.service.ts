@@ -21,7 +21,7 @@ export interface WSConnectParams {
 })
 export class WebsocketService implements OnDestroy {
     // Base URL for SignalR Hub
-    private HUB_URL = 'http://localhost:3000/ws'
+    private HUB_URL = 'http://localhost:5000/ws'
     private connection?: signalR.HubConnection
     private connectionStatus$ = new Subject<boolean>()
     private incoming$ = new Subject<WSMessage>()
@@ -213,8 +213,21 @@ export class WebsocketService implements OnDestroy {
             textContent = content
         } else {
             textContent = content.text || content.content || ''
-            fileUrl = content.file || content.fileUrl
-            fileType = content.fileType
+            
+            // Extraer fileUrl y fileType del objeto file si existe
+            if (content.file) {
+                if (typeof content.file === 'string') {
+                    // Si ya es una URL
+                    fileUrl = content.file
+                } else if (content.file.data) {
+                    // Si es un objeto con datos base64
+                    fileUrl = content.file.data
+                    fileType = content.file.type || content.fileType
+                }
+            } else if (content.fileUrl) {
+                fileUrl = content.fileUrl
+                fileType = content.fileType
+            }
         }
 
         await this.sendMessage(textContent, fileUrl, fileType)
@@ -224,14 +237,25 @@ export class WebsocketService implements OnDestroy {
      * Envía un mensaje a través de SignalR
      */
     private async sendMessage(content: string, fileUrl?: string, fileType?: string): Promise<void> {
-        if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
-            console.warn('[SignalR] No conectado. No se puede enviar el mensaje.')
+        if (!this.connection) {
+            console.error('[SignalR] Conexión no inicializada')
+            return
+        }
+
+        if (this.connection.state !== signalR.HubConnectionState.Connected) {
+            console.warn(`[SignalR] No conectado (estado: ${this.connection.state}). No se puede enviar el mensaje.`)
             return
         }
 
         try {
+            console.log('[SignalR] Enviando mensaje:', {
+                contentLength: content.length,
+                hasFile: !!fileUrl,
+                fileType
+            })
+
             await this.connection.invoke('SendMessage', content, fileUrl || null, fileType || null)
-            console.log('[SignalR] Mensaje enviado:', content)
+            console.log('[SignalR] Mensaje enviado exitosamente')
         } catch (err) {
             console.error('[SignalR] Error al enviar mensaje:', err)
         }
