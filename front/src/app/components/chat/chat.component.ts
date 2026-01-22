@@ -133,7 +133,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     private loadUserDataFromService() {
-        const u = this.auth.getCurrentUser<any>();
+        const u = this.auth.getCurrentUser();
 
         if (u) {
             this.myFullName = [u?.name, u?.lastName].filter(Boolean).join(' ').trim() || u?.email || 'Usuario';

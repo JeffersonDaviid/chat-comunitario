@@ -24,8 +24,8 @@ public class AuthSoapService : IAuthSoapService
             try
             {
                 profilePath = await SaveBase64ImageAsync(
-                    request.ProfilePictureBase64, 
-                    request.Cedula, 
+                    request.ProfilePictureBase64,
+                    request.Cedula,
                     request.ProfilePictureExtension ?? ".jpg"
                 );
             }

@@ -15,7 +15,11 @@ using System.ServiceModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// REST Controllers
+builder.Services.AddControllers();
+
 // SOAP Services (reemplaza a REST Controllers)
+// builder.Services.AddScoped<IAuthSoapService, AuthSoapService>();
 builder.Services.AddScoped<IAuthSoapService, AuthSoapService>();
 builder.Services.AddScoped<ICommunitySoapService, CommunitySoapService>();
 builder.Services.AddScoped<IChannelSoapService, ChannelSoapService>();
@@ -96,6 +100,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddSignalR();
 
 var app = builder.Build();
+app.UseStaticFiles(); // Esto sirve archivos de wwwroot
 
 // Configure the HTTP request pipeline
 app.UseCors("AllowAll");
@@ -116,11 +121,14 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
+// REST Controllers mapping
+app.MapControllers();
+
 // SOAP Endpoints con WSDL
-var encoderOptions = new SoapEncoderOptions 
-{ 
+var encoderOptions = new SoapEncoderOptions
+{
     WriteEncoding = Encoding.UTF8,
-    MessageVersion = MessageVersion.Soap11 
+    MessageVersion = MessageVersion.Soap11
 };
 SoapEndpointExtensions.UseSoapEndpoint<IAuthSoapService>((IApplicationBuilder)app, "/AuthService.svc", encoderOptions, SoapSerializer.DataContractSerializer);
 SoapEndpointExtensions.UseSoapEndpoint<ICommunitySoapService>((IApplicationBuilder)app, "/CommunityService.svc", encoderOptions, SoapSerializer.DataContractSerializer);

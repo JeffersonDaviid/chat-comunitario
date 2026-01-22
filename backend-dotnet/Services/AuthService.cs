@@ -19,7 +19,8 @@ public class AuthService : IAuthService
     public AuthService(
         UserRepository userRepository,
         ChannelRepository channelRepository,
-        IUtilityService utilityService)
+        IUtilityService utilityService
+        )
     {
         _userRepository = userRepository;
         _channelRepository = channelRepository;
@@ -32,7 +33,7 @@ public class AuthService : IAuthService
         {
             // Limpiar y validar cédula
             dto.Cedula = dto.Cedula?.Trim() ?? "";
-            
+
             if (!_utilityService.ValidateEcuadorianCedula(dto.Cedula))
             {
                 throw new ValidationException("Cédula ecuatoriana inválida");

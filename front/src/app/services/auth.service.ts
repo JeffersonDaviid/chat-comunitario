@@ -1,58 +1,39 @@
 import { Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
-import { Observable, tap } from 'rxjs'
-import { map } from 'rxjs/operators'
-import { SoapClientService } from './soap-client.service'
+import { BehaviorSubject, Observable, tap } from 'rxjs'
+import { map, catchError } from 'rxjs/operators'
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-	private readonly authServiceUrl = 'http://localhost:5000/AuthService.svc'
+	private readonly authServiceUrl = 'http://localhost:5000/api/auth/'
 	private readonly baseFiles = 'http://localhost:5000'
 	private healthCheckInterval?: any
 
-	constructor(
-		private http: HttpClient,
-		private soap: SoapClientService
-	) {
+	private currentUserSubject = new BehaviorSubject<any>(null)
+	public currentUser$ = this.currentUserSubject.asObservable()
+
+	private tokenSubject = new BehaviorSubject<string>('')
+	public token$ = this.tokenSubject.asObservable()
+
+	constructor(private http: HttpClient) {
+		this.loadSession()
 		this.startHealthCheck()
 	}
 
 	login(email: string, password: string): Observable<any> {
-		const requestBody = this.soap.buildRequestBody({ email, password })
-		
-		return this.soap.call(this.authServiceUrl, 'Login', requestBody).pipe(
-			map((soapResponse) => {
-				console.log('SOAP Response:', soapResponse)
-				
-				// Extraer datos de la respuesta SOAP
-				const result = soapResponse?.LoginResult || soapResponse
-				console.log('LoginResult:', result)
-				
-				// Extraer valores (pueden venir como string directo o como objeto con #text)
-				const successValue = result?.Success?.['#text'] || result?.Success || 'false'
-				const success = successValue === true || successValue === 'true' || successValue === 'True'
-				const token = result?.Token?.['#text'] || result?.Token || ''
-				const message = result?.Message?.['#text'] || result?.Message || ''
-				
-				// Extraer usuario
-				const userNode = result?.User || {}
-				const user = {
-					cedula: userNode?.Cedula?.['#text'] || userNode?.Cedula || '',
-					name: userNode?.Name?.['#text'] || userNode?.Name || '',
-					lastName: userNode?.LastName?.['#text'] || userNode?.LastName || '',
-					email: userNode?.Email?.['#text'] || userNode?.Email || '',
-					phone: userNode?.Phone?.['#text'] || userNode?.Phone || '',
-					address: userNode?.Address?.['#text'] || userNode?.Address || '',
-					profileImg: userNode?.ProfileImg?.['#text'] || userNode?.ProfileImg || null
-				}
+		const loginData = { email, password }
 
-				console.log('Parsed result:', { success, token, user, message })
-				
+		return this.http.post(`${this.authServiceUrl}login`, loginData).pipe(
+			map((response: any) => {
+				console.log('REST Response:', response)
+
+				const { success, token, user, message } = response
+
 				// Validar si el login fue exitoso
 				if (!success) {
 					throw new Error(message || 'Credenciales inválidas')
 				}
-				
+
 				return { success, token, user, message }
 			}),
 			tap((res) => {
@@ -60,7 +41,11 @@ export class AuthService {
 				if (res.success && res.user) {
 					this.setSession(res.user, res.token)
 				}
-			})
+			}),
+			catchError((error) => {
+				console.error('Login error:', error)
+				throw error
+			}),
 		)
 	}
 
@@ -77,19 +62,19 @@ export class AuthService {
 			latitude: number
 			longitude: number
 		},
-		file?: File | null
+		file?: File | null,
 	): Observable<any> {
 		// Convertir imagen a Base64 si existe
 		if (file) {
 			return new Observable((observer) => {
 				const reader = new FileReader()
-				
+
 				reader.onload = () => {
 					const base64 = reader.result as string
 					const extension = this.getFileExtension(file.name)
-					
-					// Construir request SOAP con imagen Base64
-					const requestBody = this.soap.buildRequestBody({
+
+					// Crear objeto con datos e imagen en Base64
+					const requestData = {
 						cedula: data.cedula,
 						name: data.name,
 						lastName: data.lastName,
@@ -100,22 +85,28 @@ export class AuthService {
 						address: data.address,
 						latitude: data.latitude,
 						longitude: data.longitude,
-						profilePictureBase64: base64,
-						profilePictureExtension: extension
-					})
+						profileImg: base64, // Enviar la imagen en Base64
+					}
 
-					this.soap.call(this.authServiceUrl, 'Register', requestBody).pipe(
-						map((soapResponse) => this.parseRegisterResponse(soapResponse)),
-						tap((res) => {
-							if (res.success && res.user) {
-								this.setSession(res.user, res.token)
-							}
+					this.http
+						.post(`${this.authServiceUrl}register`, requestData)
+						.pipe(
+							map((response: any) => this.parseRegisterResponse(response)),
+							tap((res) => {
+								if (res.success && res.user) {
+									this.setSession(res.user, res.token)
+								}
+							}),
+							catchError((error) => {
+								console.error('Register error:', error)
+								throw error
+							}),
+						)
+						.subscribe({
+							next: (result) => observer.next(result),
+							error: (err) => observer.error(err),
+							complete: () => observer.complete(),
 						})
-					).subscribe({
-						next: (result) => observer.next(result),
-						error: (err) => observer.error(err),
-						complete: () => observer.complete()
-					})
 				}
 
 				reader.onerror = () => {
@@ -127,45 +118,27 @@ export class AuthService {
 		}
 
 		// Sin imagen
-		const requestBody = this.soap.buildRequestBody({
-			cedula: data.cedula,
-			name: data.name,
-			lastName: data.lastName,
-			email: data.email,
-			password: data.password,
-			confirmPassword: data.confirmPassword,
-			phone: data.phone,
-			address: data.address,
-			latitude: data.latitude,
-			longitude: data.longitude
-		})
-
-		return this.soap.call(this.authServiceUrl, 'Register', requestBody).pipe(
-			map((soapResponse) => this.parseRegisterResponse(soapResponse)),
+		return this.http.post(`${this.authServiceUrl}register`, data).pipe(
+			map((response: any) => this.parseRegisterResponse(response)),
 			tap((res) => {
 				if (res.success && res.user) {
 					this.setSession(res.user, res.token)
 				}
-			})
+			}),
+			catchError((error) => {
+				console.error('Register error:', error)
+				throw error
+			}),
 		)
 	}
 
-	private parseRegisterResponse(soapResponse: any): any {
-		const result = soapResponse?.RegisterResult || soapResponse
-		const successValue = result?.Success?.['#text'] || result?.Success || 'false'
-		const success = successValue === true || successValue === 'true' || successValue === 'True'
-		const token = result?.Token?.['#text'] || result?.Token || ''
-		const message = result?.Message?.['#text'] || result?.Message || ''
-		
-		const userNode = result?.User || {}
-		const user = {
-			cedula: userNode?.Cedula?.['#text'] || userNode?.Cedula || '',
-			name: userNode?.Name?.['#text'] || userNode?.Name || '',
-			lastName: userNode?.LastName?.['#text'] || userNode?.LastName || '',
-			email: userNode?.Email?.['#text'] || userNode?.Email || '',
-			phone: userNode?.Phone?.['#text'] || userNode?.Phone || '',
-			address: userNode?.Address?.['#text'] || userNode?.Address || '',
-			profileImg: userNode?.ProfileImg?.['#text'] || userNode?.ProfileImg || null
+	private parseRegisterResponse(response: any): any {
+		console.log('Register Response:', response)
+
+		const { success, token, user, message } = response
+
+		if (!success) {
+			throw new Error(message || 'Error en el registro')
 		}
 
 		return { success, token, user, message }
@@ -174,45 +147,6 @@ export class AuthService {
 	private getFileExtension(filename: string): string {
 		const parts = filename.split('.')
 		return parts.length > 1 ? `.${parts[parts.length - 1]}` : '.jpg'
-	}
-
-	setSession(user: any, token: string) {
-		try {
-			// Usar sessionStorage en vez de localStorage para que la sesión no persista al cerrar navegador
-			if (token) sessionStorage.setItem('auth_token', token)
-			if (user) sessionStorage.setItem('user', JSON.stringify(user))
-			if (user?.cedula) sessionStorage.setItem('cedula', user.cedula)
-			// Reiniciar health check al iniciar sesión
-			this.startHealthCheck()
-		} catch {}
-	}
-
-	clearSession() {
-		try {
-			sessionStorage.removeItem('auth_token')
-			sessionStorage.removeItem('user')
-			sessionStorage.removeItem('cedula')
-			sessionStorage.removeItem('communityId')
-			// Detener health check al cerrar sesión
-			this.stopHealthCheck()
-		} catch {}
-	}
-
-	getCurrentUser<T = any>(): T | null {
-		try {
-			const raw = sessionStorage.getItem('user')
-			return raw ? (JSON.parse(raw) as T) : null
-		} catch {
-			return null
-		}
-	}
-
-	getToken(): string {
-		try {
-			return sessionStorage.getItem('auth_token') || ''
-		} catch {
-			return ''
-		}
 	}
 
 	/**
@@ -251,16 +185,19 @@ export class AuthService {
 		}
 
 		// Hacer petición simple al backend
-		this.http.get(`${this.baseFiles}/`, { responseType: 'text' })
-			.subscribe({
-				error: (err) => {
-					console.warn('[Auth] Backend no disponible, cerrando sesión...', err)
-					// Backend caído, limpiar sesión
-					this.clearSession()
-					// Recargar página para forzar redirect a login
-					window.location.reload()
-				}
-			})
+		this.http.get(`${this.baseFiles}/`, { responseType: 'text' }).subscribe({
+			next: () => {
+				// Backend disponible, todo bien
+				console.log('[Auth] Backend está disponible')
+			},
+			error: (err) => {
+				console.warn('[Auth] Backend no disponible, cerrando sesión...', err)
+				// Backend caído, limpiar sesión
+				this.clearSession()
+				// Recargar página para forzar redirect a login
+				window.location.reload()
+			},
+		})
 	}
 
 	profileUrl(img: string | null | undefined): string {
@@ -269,5 +206,98 @@ export class AuthService {
 		if (src.startsWith('http')) return src
 		if (src.startsWith('data:')) return src
 		return `${this.baseFiles}${src.startsWith('/') ? src : '/' + src}`
+	}
+
+	// Método para verificar token (opcional)
+	verifyToken(): Observable<any> {
+		const token = this.getToken()
+		if (!token) {
+			return new Observable((observer) => {
+				observer.error('No token available')
+				observer.complete()
+			})
+		}
+
+		return this.http.post(`${this.authServiceUrl}verify-token`, { token }).pipe(
+			catchError((error) => {
+				console.error('Token verification failed:', error)
+				// Si el token no es válido, cerrar sesión
+				this.clearSession()
+				throw error
+			}),
+		)
+	}
+
+	setSession(user: any, token: string) {
+		try {
+			if (token) sessionStorage.setItem('auth_token', token)
+			if (user) sessionStorage.setItem('user', JSON.stringify(user))
+			if (user?.cedula) sessionStorage.setItem('cedula', user.cedula)
+
+			// Actualizar subjects
+			this.currentUserSubject.next(user)
+			this.tokenSubject.next(token)
+
+			this.startHealthCheck()
+		} catch (error) {
+			console.error('Error setting session:', error)
+		}
+	}
+
+	clearSession() {
+		try {
+			sessionStorage.removeItem('auth_token')
+			sessionStorage.removeItem('user')
+			sessionStorage.removeItem('cedula')
+			sessionStorage.removeItem('communityId')
+
+			// Actualizar subjects
+			this.currentUserSubject.next(null)
+			this.tokenSubject.next('')
+
+			this.stopHealthCheck()
+		} catch (error) {
+			console.error('Error clearing session:', error)
+		}
+	}
+
+	private loadSession() {
+		try {
+			const userStr = sessionStorage.getItem('user')
+			const token = sessionStorage.getItem('auth_token')
+
+			if (userStr && token) {
+				const user = JSON.parse(userStr)
+				this.currentUserSubject.next(user)
+				this.tokenSubject.next(token)
+			}
+		} catch (error) {
+			this.clearSession()
+		}
+	}
+
+	getCurrentUser(): any {
+		return this.currentUserSubject.value
+	}
+
+	getToken(): string {
+		return this.tokenSubject.value
+	}
+
+	isAuthenticated(): boolean {
+		return !!this.getToken()
+	}
+
+	// Método logout que retorna Observable
+	logout(): Observable<any> {
+		return new Observable((observer) => {
+			try {
+				this.clearSession()
+				observer.next({ success: true, message: 'Sesión cerrada exitosamente' })
+				observer.complete()
+			} catch (error) {
+				observer.error(error)
+			}
+		})
 	}
 }

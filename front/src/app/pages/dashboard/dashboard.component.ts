@@ -66,7 +66,7 @@ export class DashboardComponent implements OnInit {
 	) {}
 
 	ngOnInit(): void {
-		const u = this.auth.getCurrentUser<any>()
+		const u = this.auth.getCurrentUser()
 		if (u) {
 			this.userName = [u?.name, u?.lastName].filter(Boolean).join(' ').trim()
 			this.userEmail = u?.email || ''
