@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewChild, ElementRef, AfterViewChecked } from '@angular/core'
+import { Component, OnDestroy, OnInit, ViewChild, ElementRef, AfterViewChecked, Input, OnChanges, SimpleChanges } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { ActivatedRoute } from '@angular/router'
@@ -23,13 +23,14 @@ interface FilePreview {
     styleUrl: './chat.component.css',
 
 })
-export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
+export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnChanges {
     @ViewChild('scrollContainer') private scrollContainer!: ElementRef
-
-    communityId = ''
-    channelId = ''
-    communityName = ''
-    channelName = ''
+    
+    // Inputs para uso embebido en dashboard
+    @Input() communityId = ''
+    @Input() channelId = ''
+    @Input() communityName = ''
+    @Input() channelName = ''
     cedula = ''
     outMsg = ''
     myFullName = '' 
@@ -55,16 +56,35 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     ) {}
 
     ngOnInit(): void {
-        this.communityId = this.route.snapshot.paramMap.get('communityId') || ''
-        this.channelId = this.route.snapshot.paramMap.get('channelId') || ''
+        // Si no vienen por @Input, intentar obtener de la ruta (compatibilidad con ruta standalone)
+        if (!this.communityId || !this.channelId) {
+            this.communityId = this.route.snapshot.paramMap.get('communityId') || ''
+            this.channelId = this.route.snapshot.paramMap.get('channelId') || ''
+        }
+        
 		this.cedula = sessionStorage.getItem('cedula') || ''
         console.log(`[Chat] Componente iniciado - Community: ${this.communityId}, Channel: ${this.channelId}`)
 
         // Cargar datos del usuario
         this.loadUserDataFromService()
 
-        // PRIMERO: Obtener nombres de comunidad y canal desde la API
-        if (this.communityId && this.channelId) {
+        // Inicializar el chat
+        this.initializeChat()
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        // Cuando cambian los inputs (al cambiar de canal en el dashboard)
+        if ((changes['communityId'] || changes['channelId']) && !changes['communityId']?.firstChange) {
+            console.log('[Chat] Inputs changed, reinitializing chat')
+            this.cleanup()
+            this.messages = []
+            this.initializeChat()
+        }
+    }
+
+    private initializeChat(): void {
+        // PRIMERO: Obtener nombres de comunidad y canal desde la API (si no vienen por @Input)
+        if (this.communityId && this.channelId && (!this.communityName || !this.channelName)) {
             this.http.get<any>(`http://localhost:5000/api/community/${this.communityId}`).subscribe({
                 next: (res) => {
                     const community = res.community
@@ -72,17 +92,25 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                     const channel = community.channels?.find((ch: any) => ch.id === this.channelId)
                     this.channelName = channel?.name || ''
                     console.log(`[Chat] Nombres obtenidos - Comunidad: ${this.communityName}, Canal: ${this.channelName}`)
+                    this.connectAndLoadMessages()
                 },
-                error: (err) => console.error('[Chat] Error obteniendo comunidad:', err)
+                error: (err) => {
+                    console.error('[Chat] Error obteniendo comunidad:', err)
+                    this.connectAndLoadMessages()
+                }
             })
+        } else {
+            this.connectAndLoadMessages()
         }
+    }
 
+    private connectAndLoadMessages(): void {
         // SEGUNDO: Cargar historial ANTES de suscribirse a mensajes nuevos
         if (this.communityId && this.channelId) {
             this.loadHistory()
         }
 
-        // SEGUNDO: suscribirse a mensajes en vivo
+        // TERCERO: suscribirse a mensajes en vivo
         this.subMsg = this.ws.messages$().subscribe((msg) => {
             console.log('[Chat] Mensaje recibido del WS:', msg.type, msg.payload?.message || msg.payload?.text || msg.payload?.content)
             
@@ -372,11 +400,22 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         return file && this.allowedImageTypes.includes(file.type)
     }
 
+    private cleanup(): void {
+        // Limpiar suscripciones sin cerrar la conexión WebSocket
+        if (this.subMsg) {
+            this.subMsg.unsubscribe()
+            this.subMsg = undefined
+        }
+        if (this.subStatus) {
+            this.subStatus.unsubscribe()
+            this.subStatus = undefined
+        }
+    }
+
     ngOnDestroy(): void {
         // Nota: NO cerramos la conexión WebSocket aquí, solo nos desuscribimos de los observables
         // Esto permite que la conexión persista cuando navegamos entre canales
-        if (this.subMsg) this.subMsg.unsubscribe()
-        if (this.subStatus) this.subStatus.unsubscribe()
+        this.cleanup()
     }
 
     trackByIndex(i: number, _item: WSMessage) {

@@ -20,6 +20,11 @@ public class CommunitySoapService : ICommunitySoapService
 
     public async Task<CreateCommunityResponse> CreateCommunity(CreateCommunityRequest request)
     {
+        Console.WriteLine($"[CommunitySoapService] CreateCommunity request received");
+        Console.WriteLine($"[CommunitySoapService] Title: '{request.Title}'");
+        Console.WriteLine($"[CommunitySoapService] Description: '{request.Description}'");
+        Console.WriteLine($"[CommunitySoapService] OwnerCedula: '{request.OwnerCedula}'");
+        
         var dto = new CreateCommunityDto
         {
             Title = request.Title,

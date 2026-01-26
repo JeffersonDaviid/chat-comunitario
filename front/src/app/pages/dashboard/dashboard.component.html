@@ -92,12 +92,14 @@
     </aside>
 
     <!-- Main Content Area -->
-    <div class="flex-1 overflow-y-auto">
-      <div class="max-w-6xl mx-auto px-8 py-8">
-        <!-- Title Section -->
-        <div class="mb-8">
-          <h2 class="text-2xl font-bold text-gray-900 mb-2">Mis Comunidades</h2>
-          <p class="text-gray-600">Accede a tus comunidades y participa en las conversaciones</p>
+    <div class="flex-1 overflow-hidden flex flex-col">
+      <!-- Mostrar lista de comunidades o chat -->
+      <div *ngIf="!showChat" class="flex-1 overflow-y-auto">
+        <div class="max-w-6xl mx-auto px-8 py-8">
+          <!-- Title Section -->
+          <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Mis Comunidades</h2>
+            <p class="text-gray-600">Accede a tus comunidades y participa en las conversaciones</p>
         </div>
 
         <!-- Loading State -->
@@ -158,19 +160,33 @@
                   </button>
                 </div>
                 <div *ngIf="c.channels && c.channels.length > 0" class="space-y-2">
-                  <button 
+                  <div 
                     *ngFor="let ch of c.channels"
-                    (click)="goChannel(c.id, ch.id)"
-                    class="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-blue-50 transition-colors group text-left">
-                    <span class="text-gray-400 font-semibold">#</span>
-                    <div class="flex-1 min-w-0">
-                      <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ ch.name }}</p>
-                      <p class="text-xs text-gray-500 truncate">{{ ch.description }}</p>
+                    class="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-blue-50 transition-colors group">
+                    <button 
+                      (click)="goChannel(c.id, ch.id)"
+                      class="flex-1 flex items-start gap-3 text-left">
+                      <span class="text-gray-400 font-semibold">#</span>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ ch.name }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ ch.description }}</p>
+                      </div>
+                    </button>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                      <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+                      <button 
+                        *ngIf="isOwner(c.ownerCedula)"
+                        (click)="deleteChannel(c.id, ch.id, ch.name)"
+                        title="Eliminar canal"
+                        class="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                      </button>
                     </div>
-                    <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                  </button>
+                  </div>
                 </div>
                 <div *ngIf="!c.channels || c.channels.length === 0" class="text-sm text-gray-500 italic py-2">
                   Sin canales disponibles
@@ -191,6 +207,36 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Vista de Chat Integrado -->
+      <div *ngIf="showChat" class="flex-1 flex flex-col h-full">
+        <!-- Header del Chat con botón de volver -->
+        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4">
+          <button 
+            (click)="closeChat()"
+            class="text-gray-600 hover:text-gray-900 transition-colors"
+            title="Volver a comunidades">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+          </button>
+          <div>
+            <h2 class="text-lg font-bold text-gray-900"># {{ activeChannelName }}</h2>
+            <p class="text-sm text-gray-600">{{ activeCommunityName }}</p>
+          </div>
+        </div>
+        
+        <!-- Componente de Chat -->
+        <div class="flex-1 overflow-hidden">
+          <chat 
+            [communityId]="activeCommunityId"
+            [channelId]="activeChannelId"
+            [communityName]="activeCommunityName"
+            [channelName]="activeChannelName">
+          </chat>
         </div>
       </div>
     </div>

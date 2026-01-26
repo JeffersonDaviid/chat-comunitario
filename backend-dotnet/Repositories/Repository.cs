@@ -52,6 +52,7 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task SaveAsync()
     {
-        await _context.SaveChangesAsync();
+        var result = await _context.SaveChangesAsync();
+        Console.WriteLine($"[Repository] SaveChangesAsync completed - {result} records affected");
     }
 }

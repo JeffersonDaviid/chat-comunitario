@@ -7,11 +7,12 @@ import { CommunityService } from '../../services/community.service'
 import { ChannelService } from '../../services/channel.service'
 import { AuthService } from '../../services/auth.service'
 import { InviteUsersModalComponent } from '../../components/invite-users-modal/invite-users-modal.component'
+import { ChatComponent } from '../../components/chat/chat.component'
 
 @Component({
 	selector: 'app-dashboard',
 	standalone: true,
-	imports: [CommonModule, HttpClientModule, ReactiveFormsModule, InviteUsersModalComponent],
+	imports: [CommonModule, HttpClientModule, ReactiveFormsModule, InviteUsersModalComponent, ChatComponent],
 	templateUrl: './dashboard.component.html',
 	styleUrl: './dashboard.component.css',
 })
@@ -32,6 +33,13 @@ export class DashboardComponent implements OnInit {
 	}> = []
 	loading = false
 	errorMsg = ''
+
+	// Chat integrado
+	showChat = false
+	activeCommunityId = ''
+	activeChannelId = ''
+	activeCommunityName = ''
+	activeChannelName = ''
 
 	// Modal states
 	showCreateCommunityModal = false
@@ -99,10 +107,17 @@ export class DashboardComponent implements OnInit {
 	fetchCommunities() {
 		this.loading = true
 		console.log('[Dashboard] Fetching communities for cedula:', this.userCedula)
+		
 		this.community.getCommunitiesByUser(this.userCedula).subscribe({
 			next: (res) => {
 				console.log('[Dashboard] Communities response:', res)
-				this.communities = res?.communities || []
+				console.log('[Dashboard] Communities received:', res?.communities?.length || 0)
+				
+				// Solo actualizar si recibimos datos
+				if (res && res.communities) {
+					this.communities = res.communities
+					console.log('[Dashboard] Communities updated:', this.communities.length)
+				}
 				this.loading = false
 			},
 			error: (err) => {
@@ -113,7 +128,25 @@ export class DashboardComponent implements OnInit {
 	}
 
 	goChannel(commId: string, channelId: string) {
-		this.router.navigate(['/chat', commId, channelId])
+		// Encontrar los nombres de la comunidad y canal
+		const community = this.communities.find(c => c.id === commId)
+		const channel = community?.channels?.find(ch => ch.id === channelId)
+		
+		this.activeCommunityId = commId
+		this.activeChannelId = channelId
+		this.activeCommunityName = community?.title || ''
+		this.activeChannelName = channel?.name || ''
+		this.showChat = true
+		
+		console.log('[Dashboard] Abriendo chat:', { commId, channelId, communityName: this.activeCommunityName, channelName: this.activeChannelName })
+	}
+
+	closeChat() {
+		this.showChat = false
+		this.activeCommunityId = ''
+		this.activeChannelId = ''
+		this.activeCommunityName = ''
+		this.activeChannelName = ''
 	}
 
 	isOwner(communityCedula: string): boolean {
@@ -142,34 +175,50 @@ export class DashboardComponent implements OnInit {
 		this.creatingCommunity = true
 		this.createCommunityError = ''
 
+		// Verificar cedula antes de crear
+		const currentUser = this.auth.getCurrentUser()
+		const cedula = currentUser?.cedula || currentUser?.Cedula || sessionStorage.getItem('cedula') || ''
+		
+		console.log('[Dashboard] Current user before create:', currentUser)
+		console.log('[Dashboard] Extracted cedula:', cedula)
+		console.log('[Dashboard] this.userCedula value:', this.userCedula)
+		console.log('[Dashboard] SessionStorage cedula:', sessionStorage.getItem('cedula'))
+
 		const payload = {
 			title: this.communityForm.get('title')?.value || '',
 			description: this.communityForm.get('description')?.value || '',
-			ownerCedula: this.userCedula,
+			ownerCedula: cedula,
 		}
 
-		console.log('[Dashboard] Creating community:', payload)
+		console.log('[Dashboard] Creating community with payload:', payload)
+		console.log('[Dashboard] User cedula being used:', payload.ownerCedula)
 
 		this.community.createCommunity(payload).subscribe({
 			next: (res) => {
 				console.log('[Dashboard] Create community response:', res)
+				this.creatingCommunity = false
+				
 				if (res.success) {
 					// Guardar ID de la comunidad creada
 					this.lastCreatedCommunityId = res.community?.id || ''
-					console.log('[Dashboard] Community created with ID:', this.lastCreatedCommunityId)
+					console.log('[Dashboard] Community created successfully with ID:', this.lastCreatedCommunityId)
+					console.log('[Dashboard] Community owner cedula in response:', res.community?.ownerCedula)
 					
-					// Cerrar modal de creación
+					// NO agregar al array local, mejor refrescar directamente del backend
 					this.closeCreateCommunityModal()
 					
-					// IMPORTANTE: Refrescar las comunidades INMEDIATAMENTE
+					// Refrescar comunidades del backend para obtener la nueva comunidad
+					console.log('[Dashboard] Fetching updated communities from backend...')
 					this.fetchCommunities()
 					
-					// Abrir modal de invitación
-					this.showInviteModal = true
+					// Esperar a que carguen las comunidades antes de abrir modal
+					setTimeout(() => {
+						this.showInviteModal = true
+					}, 500)
 				} else {
 					this.createCommunityError = res.message || 'Error al crear comunidad'
+					console.error('[Dashboard] Error creating community:', res.message)
 				}
-				this.creatingCommunity = false
 			},
 			error: (err) => {
 				console.error('[Dashboard] Error creating community:', err)
@@ -193,6 +242,39 @@ export class DashboardComponent implements OnInit {
 		this.showCreateChannelModal = true
 		this.createChannelError = ''
 		this.channelForm.reset()
+	}
+
+	deleteChannel(communityId: string, channelId: string, channelName: string) {
+		if (!confirm(`¿Estás seguro de eliminar el canal #${channelName}?`)) {
+			return
+		}
+
+		console.log('[Dashboard] Deleting channel:', channelId, 'from community:', communityId)
+		
+		this.channel.deleteChannel(communityId, channelId).subscribe({
+			next: (res) => {
+				console.log('[Dashboard] Delete channel response:', res)
+				if (res.success) {
+					// Eliminar el canal del array local
+					const community = this.communities.find(c => c.id === communityId)
+					if (community && community.channels) {
+						community.channels = community.channels.filter(ch => ch.id !== channelId)
+						console.log('[Dashboard] Channel removed from local list')
+					}
+					
+					// Si estamos viendo este canal, cerrar el chat
+					if (this.activeChannelId === channelId) {
+						this.closeChat()
+					}
+				} else {
+					alert(res.message || 'Error al eliminar el canal')
+				}
+			},
+			error: (err) => {
+				console.error('[Dashboard] Error deleting channel:', err)
+				alert('Error al eliminar el canal')
+			}
+		})
 	}
 
 	goHome() {
@@ -323,6 +405,8 @@ export class DashboardComponent implements OnInit {
 	closeInviteModal() {
 		this.showInviteModal = false
 		this.lastCreatedCommunityId = ''
+		// Refrescar solo si realmente invitamos usuarios
+		console.log('[Dashboard] Invite modal closed, refreshing communities from backend...')
 		this.fetchCommunities()
 	}
 

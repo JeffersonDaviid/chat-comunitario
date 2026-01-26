@@ -24,11 +24,16 @@ public class CommunityService : ICommunityService
     {
         try
         {
+            Console.WriteLine($"[DEBUG] CreateCommunityAsync - Title: '{dto.Title}', OwnerCedula: '{dto.OwnerCedula}'");
+            
             var owner = await _userRepository.GetByCedulaAsync(dto.OwnerCedula);
             if (owner == null)
             {
+                Console.WriteLine($"[DEBUG] Owner not found with cedula: '{dto.OwnerCedula}'");
                 throw new NotFoundException("Usuario propietario", dto.OwnerCedula);
             }
+
+            Console.WriteLine($"[DEBUG] Owner found: {owner.Name} {owner.LastName}");
 
             var community = new Community
             {
@@ -38,16 +43,32 @@ public class CommunityService : ICommunityService
             };
 
             await _communityRepository.AddAsync(community);
+            
+            // Guardar cambios inmediatamente
             await _communityRepository.SaveAsync();
+            Console.WriteLine($"[DEBUG] Community saved with ID: {community.Id}");
+
+            // Verificar que se guardó
+            var savedCommunity = await _communityRepository.GetByIdAsync(community.Id);
+            if (savedCommunity == null)
+            {
+                Console.WriteLine($"[ERROR] Community was not persisted to database!");
+                throw new Exception("La comunidad no se guardó correctamente");
+            }
+            
+            Console.WriteLine($"[DEBUG] Community verified in database: {savedCommunity.Title}");
 
             return (true, community, "Comunidad creada exitosamente");
         }
         catch (BusinessException ex)
         {
+            Console.WriteLine($"[DEBUG] BusinessException: {ex.Message}");
             return (false, null, ex.Message);
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[DEBUG] Exception: {ex.Message}");
+            Console.WriteLine($"[DEBUG] Stack trace: {ex.StackTrace}");
             return (false, null, $"Error: {ex.Message}");
         }
     }

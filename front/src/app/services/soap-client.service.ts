@@ -141,14 +141,19 @@ ${body}
 		let xml = ''
 		
 		// Definir el orden según DataMember Order en el backend
+		// IMPORTANTE: El orden debe coincidir EXACTAMENTE con el DataContract en el backend
 		const keyOrder: Record<string, number> = {
+			// CreateCommunityRequest - Order: Description=0, OwnerCedula=1, Title=2
+			'description': 0,
+			'ownerCedula': 1,
+			'title': 2,
+			// InviteUsersRequest - Order: CommunityId=0, UserCedulas=1
 			'communityId': 0,
 			'userCedulas': 1,
+			// GetAvailableUsersRequest - Order: ExcludeCedula=0
 			'excludeCedula': 0,
+			// GetCommunitiesByUserRequest - Order: Cedula=0
 			'cedula': 0,
-			'title': 0,
-			'description': 1,
-			'ownerCedula': 2,
 		}
 		
 		// Ordenar las keys por el orden especificado

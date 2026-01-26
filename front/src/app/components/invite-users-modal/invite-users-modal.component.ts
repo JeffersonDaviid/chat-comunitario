@@ -99,7 +99,7 @@ export interface User {
     }
   `]
 })
-export class InviteUsersModalComponent implements OnInit {
+export class InviteUsersModalComponent implements OnInit, OnChanges {
   @Input() isOpen = false
   @Input() excludeCedula = ''
   @Output() onClose = new EventEmitter<void>()
@@ -128,30 +128,38 @@ export class InviteUsersModalComponent implements OnInit {
   constructor(private communityService: CommunityService) {}
 
   ngOnInit() {
-    this.loadAvailableUsers()
+    console.log('[InviteModal] ngOnInit, isOpen:', this.isOpen, 'excludeCedula:', this.excludeCedula)
+    if (this.isOpen) {
+      this.loadAvailableUsers()
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['isOpen'] && changes['isOpen'].currentValue === true) {
+    console.log('[InviteModal] ngOnChanges:', changes)
+    if (changes['isOpen']?.currentValue === true) {
+      console.log('[InviteModal] Modal opened, loading users')
       this.loadAvailableUsers()
     }
   }
 
   loadAvailableUsers() {
+    console.log('[InviteModal] loadAvailableUsers called with excludeCedula:', this.excludeCedula)
     this.communityService.getAvailableUsers(this.excludeCedula).subscribe({
       next: (response) => {
-        console.log('Available users response:', response)
+        console.log('[InviteModal] Available users response:', response)
         if (response?.success) {
           this.users = response.users || []
+          console.log('[InviteModal] Users loaded:', this.users.length, this.users)
           this.selectedUsers = {}
           this.errorMsg = ''
         } else {
           this.errorMsg = response?.message || 'Error cargando usuarios'
+          console.error('[InviteModal] Error in response:', this.errorMsg)
         }
       },
       error: (error) => {
         this.errorMsg = 'Error al cargar usuarios disponibles'
-        console.error('Error loading available users:', error)
+        console.error('[InviteModal] Error loading available users:', error)
       }
     })
   }

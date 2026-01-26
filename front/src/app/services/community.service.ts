@@ -171,14 +171,19 @@ export class CommunityService {
 
 	// GET - Obtener usuarios disponibles para invitar
 	getAvailableUsers(excludeCedula: string): Observable<any> {
+		console.log('[CommunityService] getAvailableUsers called with excludeCedula:', excludeCedula)
 		const requestBody = this.soap.buildRequestBody({
 			excludeCedula: excludeCedula
 		})
 
 		return this.soap.call(this.communityServiceUrl, 'GetAvailableUsers', requestBody).pipe(
 			map((soapResponse) => {
+				console.log('[CommunityService] GetAvailableUsers SOAP response:', soapResponse)
 				const result = soapResponse?.GetAvailableUsersResult || soapResponse
-				return this.parseAvailableUsersResponse(result)
+				console.log('[CommunityService] Result extracted:', result)
+				const parsed = this.parseAvailableUsersResponse(result)
+				console.log('[CommunityService] Parsed response:', parsed)
+				return parsed
 			})
 		)
 	}
@@ -271,7 +276,9 @@ export class CommunityService {
 		const success = this.extractText(result?.Success)
 		const message = this.extractText(result?.Message)
 		const usersNode = result?.Users
+		console.log('[CommunityService] parseAvailableUsersResponse - usersNode:', usersNode)
 		const users = this.parseUsersList(usersNode)
+		console.log('[CommunityService] parseAvailableUsersResponse - parsed users:', users)
 
 		return { success, message, users }
 	}
