@@ -12,8 +12,9 @@ export class SoapClientService {
 	 */
 	call(endpoint: string, operation: string, body: string): Observable<any> {
 		const soapEnvelope = this.buildSoapEnvelope(operation, body)
+		console.log(`[SOAP] Calling ${operation} on ${endpoint}`)
 		console.log('[SOAP] Request Body:', body)
-		console.log('[SOAP] Full Envelope:', soapEnvelope)
+		console.log('[SOAP] Full SOAP Envelope:', soapEnvelope)
 		
 		const headers = new HttpHeaders({
 			'Content-Type': 'text/xml; charset=utf-8',
@@ -24,7 +25,10 @@ export class SoapClientService {
 			headers, 
 			responseType: 'text' 
 		}).pipe(
-			map(xml => this.parseResponse(xml, operation))
+			map(xml => {
+				console.log(`[SOAP] ${operation} Response received`)
+				return this.parseResponse(xml, operation)
+			})
 		)
 	}
 
@@ -35,14 +39,12 @@ export class SoapClientService {
 		return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" 
                xmlns:tem="http://tempuri.org/"
-               xmlns:dat="http://schemas.datacontract.org/2004/07/ChatComunitario.SoapServices"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+							 xmlns:chat="http://schemas.datacontract.org/2004/07/ChatComunitario.SoapServices">
   <soap:Body>
     <tem:${operation}>
-      <tem:request>
-        ${body}
-      </tem:request>
+			<tem:request xmlns:a="http://schemas.datacontract.org/2004/07/ChatComunitario.SoapServices">
+${body}
+			</tem:request>
     </tem:${operation}>
   </soap:Body>
 </soap:Envelope>`
@@ -166,13 +168,13 @@ export class SoapClientService {
 				
 				// Manejar arrays
 				if (Array.isArray(value)) {
-					xml += `<${capitalizedKey}>\n`
+					xml += `        <a:${capitalizedKey}>\n`
 					for (const item of value) {
-						xml += `  <string>${this.escapeXml(String(item))}</string>\n`
+						xml += `          <a:string>${this.escapeXml(String(item))}</a:string>\n`
 					}
-					xml += `</${capitalizedKey}>\n`
+					xml += `        </a:${capitalizedKey}>\n`
 				} else {
-					xml += `<${capitalizedKey}>${this.escapeXml(String(value))}</${capitalizedKey}>\n`
+					xml += `        <a:${capitalizedKey}>${this.escapeXml(String(value))}</a:${capitalizedKey}>\n`
 				}
 			}
 		}

@@ -28,6 +28,7 @@ export class CommunityService {
 		description: string
 		ownerCedula: string
 	}): Observable<any> {
+		console.log('[CommunityService] Creating community:', data)
 		const requestBody = this.soap.buildRequestBody({
 			title: data.title,
 			description: data.description,
@@ -36,8 +37,11 @@ export class CommunityService {
 
 		return this.soap.call(this.communityServiceUrl, 'CreateCommunity', requestBody).pipe(
 			map((soapResponse) => {
+				console.log('[CommunityService] CreateCommunity SOAP response:', soapResponse)
 				const result = soapResponse?.CreateCommunityResult || soapResponse
-				return this.parseCommunityResponse(result)
+				const parsed = this.parseCommunityResponse(result)
+				console.log('[CommunityService] Parsed create response:', parsed)
+				return parsed
 			})
 		)
 	}
@@ -58,17 +62,25 @@ export class CommunityService {
 
 	// READ - Obtener comunidades por usuario
 	getCommunitiesByUser(cedula: string): Observable<any> {
+		console.log('[CommunityService] Fetching communities for cedula:', cedula)
 		const requestBody = this.soap.buildRequestBody({ cedula: cedula })
 
 		return this.soap.call(this.communityServiceUrl, 'GetCommunitiesByUser', requestBody).pipe(
 			map((soapResponse) => {
+				console.log('[CommunityService] SOAP Response:', soapResponse)
 				const result = soapResponse?.GetCommunitiesByUserResult || soapResponse
-				console.log('[Community] GetCommunitiesByUser result:', result)
-				console.log('[Community] Communities node:', result?.Communities)
+				console.log('[CommunityService] Result:', result)
+				
 				const communitiesNode = result?.Communities?.CommunityResponse || result?.Communities
-				console.log('[Community] Communities node after extract:', communitiesNode)
-				const communities = this.extractArray(communitiesNode).map((c: any) => this.parseCommunity(c))
-				console.log('[Community] Parsed communities count:', communities.length)
+				console.log('[CommunityService] Communities Node:', communitiesNode)
+				
+				const communities = this.extractArray(communitiesNode).map((c: any) => {
+					const parsed = this.parseCommunity(c)
+					console.log('[CommunityService] Parsed community:', parsed)
+					return parsed
+				})
+				
+				console.log('[CommunityService] Total communities:', communities.length)
 				return { success: true, communities }
 			})
 		)
@@ -196,17 +208,53 @@ export class CommunityService {
 	}
 
 	private parseCommunity(node: any): any {
-		if (!node) return null
+		if (!node) {
+			console.log('[CommunityService] parseCommunity received null node')
+			return null
+		}
 
-		return {
+		console.log('[CommunityService] Parsing community node:', node)
+
+		// Parsear canales correctamente - probar diferentes estructuras
+		let channelsNode = node?.Channels?.ChannelResponse || node?.Channels
+		console.log('[CommunityService] Raw channels node:', channelsNode)
+		
+		// Si channelsNode es un objeto con propiedades, convertirlo a array
+		if (channelsNode && typeof channelsNode === 'object' && !Array.isArray(channelsNode)) {
+			// Puede ser un objeto con una única propiedad que contiene el array
+			const keys = Object.keys(channelsNode)
+			if (keys.length > 0 && Array.isArray(channelsNode[keys[0]])) {
+				channelsNode = channelsNode[keys[0]]
+			}
+		}
+
+		const channels = this.extractArray(channelsNode).map((ch: any) => {
+			const channel = {
+				id: this.extractText(ch?.Id),
+				name: this.extractText(ch?.Name),
+				description: this.extractText(ch?.Description),
+				communityId: this.extractText(ch?.CommunityId)
+			}
+			console.log('[CommunityService] Parsed channel:', channel)
+			return channel
+		})
+
+		// Parsear miembros
+		const membersNode = node?.Members?.UserResponse || node?.Members?.string || node?.Members
+		const members = this.extractArray(membersNode)
+
+		const community = {
 			id: this.extractText(node?.Id),
 			title: this.extractText(node?.Title),
 			description: this.extractText(node?.Description),
 			ownerCedula: this.extractText(node?.OwnerCedula),
 			createdAt: this.extractText(node?.CreatedAt),
-			members: this.extractArray(node?.Members?.string),
-			channels: this.extractArray(node?.Channels?.ChannelResponse)
+			members: members,
+			channels: channels
 		}
+
+		console.log('[CommunityService] Final parsed community:', community)
+		return community
 	}
 
 	private extractText(node: any): any {

@@ -230,12 +230,23 @@ export class AuthService {
 
 	setSession(user: any, token: string) {
 		try {
-			if (token) sessionStorage.setItem('auth_token', token)
-			if (user) sessionStorage.setItem('user', JSON.stringify(user))
-			if (user?.cedula) sessionStorage.setItem('cedula', user.cedula)
+			// Normalizar propiedades del usuario (backend envía con mayúscula)
+			const normalizedUser = {
+				cedula: user?.Cedula || user?.cedula,
+				name: user?.Name || user?.name,
+				lastName: user?.LastName || user?.lastName,
+				email: user?.Email || user?.email,
+				profileImg: user?.ProfileImg || user?.profileImg,
+			}
 
-			// Actualizar subjects
-			this.currentUserSubject.next(user)
+			console.log('[Auth] Setting session with user:', normalizedUser)
+			
+			if (token) sessionStorage.setItem('auth_token', token)
+			if (normalizedUser) sessionStorage.setItem('user', JSON.stringify(normalizedUser))
+			if (normalizedUser?.cedula) sessionStorage.setItem('cedula', normalizedUser.cedula)
+
+			// Actualizar subjects con usuario normalizado
+			this.currentUserSubject.next(normalizedUser)
 			this.tokenSubject.next(token)
 
 			this.startHealthCheck()

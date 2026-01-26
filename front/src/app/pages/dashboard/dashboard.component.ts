@@ -67,14 +67,24 @@ export class DashboardComponent implements OnInit {
 
 	ngOnInit(): void {
 		const u = this.auth.getCurrentUser()
+		console.log('[Dashboard] Current user:', u)
+		console.log('[Dashboard] User object keys:', u ? Object.keys(u) : 'null')
+		console.log('[Dashboard] User cedula property:', u?.cedula)
+		console.log('[Dashboard] User Cedula property:', u?.Cedula)
+		
 		if (u) {
 			this.userName = [u?.name, u?.lastName].filter(Boolean).join(' ').trim()
 			this.userEmail = u?.email || ''
-			this.userCedula = u?.cedula || ''
-			this.userProfileImg = u?.profileImg || ''
+			// Try both lowercase and uppercase property names
+			this.userCedula = u?.cedula || u?.Cedula || ''
+			this.userProfileImg = u?.profileImg || u?.ProfileImg || ''
 		}
 
+		console.log('[Dashboard] Final user cedula:', this.userCedula)
+		console.log('[Dashboard] SessionStorage cedula:', sessionStorage.getItem('cedula'))
+
 		if (!this.userCedula) {
+			console.error('[Dashboard] No user cedula found, redirecting to login')
 			// Protección adicional por si se accede directamente sin login
 			this.router.navigateByUrl('/login')
 			return
@@ -138,13 +148,23 @@ export class DashboardComponent implements OnInit {
 			ownerCedula: this.userCedula,
 		}
 
+		console.log('[Dashboard] Creating community:', payload)
+
 		this.community.createCommunity(payload).subscribe({
 			next: (res) => {
+				console.log('[Dashboard] Create community response:', res)
 				if (res.success) {
 					// Guardar ID de la comunidad creada
 					this.lastCreatedCommunityId = res.community?.id || ''
-					// Abrir modal de invitación
+					console.log('[Dashboard] Community created with ID:', this.lastCreatedCommunityId)
+					
+					// Cerrar modal de creación
 					this.closeCreateCommunityModal()
+					
+					// IMPORTANTE: Refrescar las comunidades INMEDIATAMENTE
+					this.fetchCommunities()
+					
+					// Abrir modal de invitación
 					this.showInviteModal = true
 				} else {
 					this.createCommunityError = res.message || 'Error al crear comunidad'
@@ -152,6 +172,7 @@ export class DashboardComponent implements OnInit {
 				this.creatingCommunity = false
 			},
 			error: (err) => {
+				console.error('[Dashboard] Error creating community:', err)
 				this.createCommunityError =
 					err?.error?.message || 'Error al crear comunidad'
 				this.creatingCommunity = false
@@ -228,10 +249,15 @@ export class DashboardComponent implements OnInit {
 			description: this.channelForm.get('description')?.value || '',
 		}
 
+		console.log('[Dashboard] Creating channel:', payload)
+
 		this.channel.createChannel(payload).subscribe({
 			next: (res) => {
+				console.log('[Dashboard] Create channel response:', res)
 				if (res.success) {
+					console.log('[Dashboard] Channel created successfully')
 					this.closeCreateChannelModal()
+					// Refrescar comunidades para ver el nuevo canal
 					this.fetchCommunities()
 				} else {
 					this.createChannelError = res.message || 'Error al crear canal'
@@ -239,6 +265,7 @@ export class DashboardComponent implements OnInit {
 				this.creatingChannel = false
 			},
 			error: (err) => {
+				console.error('[Dashboard] Error creating channel:', err)
 				this.createChannelError = err?.error?.message || 'Error al crear canal'
 				this.creatingChannel = false
 			},
@@ -269,20 +296,24 @@ export class DashboardComponent implements OnInit {
 	}
 
 	onInviteUsersSelected(selectedCedulas: string[]) {
+		console.log('[Dashboard] Inviting users:', selectedCedulas)
+		
 		if (!this.lastCreatedCommunityId || selectedCedulas.length === 0) {
+			console.log('[Dashboard] No users to invite, closing modal')
 			this.showInviteModal = false
-			this.fetchCommunities()
+			// Ya se refrescó después de crear la comunidad, no necesitamos hacerlo de nuevo
 			return
 		}
 
 		this.community.inviteUsers(this.lastCreatedCommunityId, selectedCedulas).subscribe({
 			next: (res) => {
-				console.log('Invitación resultado:', res)
+				console.log('[Dashboard] Invite users result:', res)
 				this.showInviteModal = false
+				// Refrescar para ver los nuevos miembros
 				this.fetchCommunities()
 			},
 			error: (err) => {
-				console.error('Error invitando usuarios:', err)
+				console.error('[Dashboard] Error inviting users:', err)
 				this.showInviteModal = false
 				this.fetchCommunities()
 			},
