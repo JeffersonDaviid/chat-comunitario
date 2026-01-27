@@ -8,6 +8,8 @@ namespace ChatComunitario.Hubs;
 
 public class ChatHub : Hub
 {
+    private const string ErrorEvent = "Error";
+    
     private readonly AppDbContext _context;
     private static readonly Dictionary<string, (string CommunityId, string ChannelId, string Cedula)> _connections = new();
 
@@ -26,7 +28,7 @@ public class ChatHub : Hub
 
         if (community == null)
         {
-            await Clients.Caller.SendAsync("Error", "Comunidad no encontrada");
+            await Clients.Caller.SendAsync(ErrorEvent, "Comunidad no encontrada");
             return;
         }
 
@@ -34,7 +36,7 @@ public class ChatHub : Hub
         var isMember = community.Members.Any(m => m.UserCedula == cedula);
         if (!isMember)
         {
-            await Clients.Caller.SendAsync("Error", "Usuario no es miembro de la comunidad");
+            await Clients.Caller.SendAsync(ErrorEvent, "Usuario no es miembro de la comunidad");
             return;
         }
 
@@ -42,7 +44,7 @@ public class ChatHub : Hub
         var channelExists = community.Channels.Any(ch => ch.Id.ToString() == channelId);
         if (!channelExists)
         {
-            await Clients.Caller.SendAsync("Error", "Canal no encontrado en la comunidad");
+            await Clients.Caller.SendAsync(ErrorEvent, "Canal no encontrado en la comunidad");
             return;
         }
 
@@ -76,7 +78,7 @@ public class ChatHub : Hub
     {
         if (!_connections.TryGetValue(Context.ConnectionId, out var connectionInfo))
         {
-            await Clients.Caller.SendAsync("Error", "No estás conectado a ningún canal");
+            await Clients.Caller.SendAsync(ErrorEvent, "No estás conectado a ningún canal");
             return;
         }
 
@@ -86,7 +88,7 @@ public class ChatHub : Hub
         var user = await _context.Users.FindAsync(cedula);
         if (user == null)
         {
-            await Clients.Caller.SendAsync("Error", "Usuario no encontrado");
+            await Clients.Caller.SendAsync(ErrorEvent, "Usuario no encontrado");
             return;
         }
 

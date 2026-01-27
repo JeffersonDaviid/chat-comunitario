@@ -39,6 +39,15 @@ public interface ICommunitySoapService
 
     [OperationContract]
     Task<InviteUsersResponse> InviteUsers(InviteUsersRequest request);
+
+    [OperationContract]
+    Task<GetPendingInvitationsResponse> GetPendingInvitations(GetPendingInvitationsRequest request);
+
+    [OperationContract]
+    Task<AcceptInvitationResponse> AcceptInvitation(AcceptInvitationRequest request);
+
+    [OperationContract]
+    Task<RejectInvitationResponse> RejectInvitation(RejectInvitationRequest request);
 }
 
 // Request/Response models
@@ -241,4 +250,89 @@ public class InviteUsersResponse
     
     [DataMember]
     public List<string> InvitedUsers { get; set; } = new();
+}
+
+[DataContract]
+public class GetPendingInvitationsRequest
+{
+    [DataMember]
+    public string UserCedula { get; set; } = string.Empty;
+}
+
+[DataContract]
+public class GetPendingInvitationsResponse
+{
+    [DataMember]
+    public bool Success { get; set; }
+    
+    [DataMember]
+    public string Message { get; set; } = string.Empty;
+    
+    [DataMember]
+    public List<InvitationResponse> Invitations { get; set; } = new();
+}
+
+[DataContract]
+public class InvitationResponse
+{
+    [DataMember]
+    public Guid Id { get; set; }
+    
+    [DataMember]
+    public Guid CommunityId { get; set; }
+    
+    [DataMember]
+    public string CommunityTitle { get; set; } = string.Empty;
+    
+    [DataMember]
+    public string CommunityDescription { get; set; } = string.Empty;
+    
+    [DataMember]
+    public string InvitedByName { get; set; } = string.Empty;
+    
+    [DataMember]
+    public string InvitedByCedula { get; set; } = string.Empty;
+    
+    [DataMember]
+    public DateTime CreatedAt { get; set; }
+}
+
+[DataContract]
+public class AcceptInvitationRequest
+{
+    [DataMember]
+    public Guid InvitationId { get; set; }
+    
+    [DataMember]
+    public string UserCedula { get; set; } = string.Empty;
+}
+
+[DataContract]
+public class AcceptInvitationResponse
+{
+    [DataMember]
+    public bool Success { get; set; }
+    
+    [DataMember]
+    public string Message { get; set; } = string.Empty;
+}
+
+[DataContract]
+public class RejectInvitationRequest
+{
+    [DataMember]
+    public Guid InvitationId { get; set; }
+    
+    [DataMember]
+    public string UserCedula { get; set; } = string.Empty;
+}
+
+[DataContract]
+public class RejectInvitationResponse
+{
+    [DataMember]
+    public bool Success { get; set; }
+    
+    [DataMember]
+    public string Message { get; set; } = string.Empty;
 }

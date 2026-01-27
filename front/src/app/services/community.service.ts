@@ -18,8 +18,8 @@ export class CommunityService {
 	private readonly communityServiceUrl = 'http://localhost:5000/CommunityService.svc'
 
 	constructor(
-		private http: HttpClient,
-		private soap: SoapClientService
+		private readonly http: HttpClient,
+		private readonly soap: SoapClientService
 	) {}
 
 	// CREATE - Crear nueva comunidad
@@ -303,5 +303,81 @@ export class CommunityService {
 			email: this.extractText(u?.Email),
 			profileImg: this.extractText(u?.ProfileImg)
 		}))
+	}
+
+	// ==================== INVITACIONES ====================
+
+	// GET - Obtener invitaciones pendientes del usuario
+	getPendingInvitations(userCedula: string): Observable<any> {
+		console.log('[CommunityService] Getting pending invitations for:', userCedula)
+		const requestBody = this.soap.buildRequestBody({
+			userCedula: userCedula
+		})
+
+		return this.soap.call(this.communityServiceUrl, 'GetPendingInvitations', requestBody).pipe(
+			map((soapResponse) => {
+				console.log('[CommunityService] GetPendingInvitations SOAP response:', soapResponse)
+				const result = soapResponse?.GetPendingInvitationsResult || soapResponse
+				return this.parseInvitationsResponse(result)
+			})
+		)
+	}
+
+	// POST - Aceptar invitación
+	acceptInvitation(invitationId: string, userCedula: string): Observable<any> {
+		console.log('[CommunityService] Accepting invitation:', invitationId)
+		const requestBody = this.soap.buildRequestBody({
+			invitationId: invitationId,
+			userCedula: userCedula
+		})
+
+		return this.soap.call(this.communityServiceUrl, 'AcceptInvitation', requestBody).pipe(
+			map((soapResponse) => {
+				console.log('[CommunityService] AcceptInvitation SOAP response:', soapResponse)
+				const result = soapResponse?.AcceptInvitationResult || soapResponse
+				return {
+					success: this.extractText(result?.Success) === 'true',
+					message: this.extractText(result?.Message)
+				}
+			})
+		)
+	}
+
+	// POST - Rechazar invitación
+	rejectInvitation(invitationId: string, userCedula: string): Observable<any> {
+		console.log('[CommunityService] Rejecting invitation:', invitationId)
+		const requestBody = this.soap.buildRequestBody({
+			invitationId: invitationId,
+			userCedula: userCedula
+		})
+
+		return this.soap.call(this.communityServiceUrl, 'RejectInvitation', requestBody).pipe(
+			map((soapResponse) => {
+				console.log('[CommunityService] RejectInvitation SOAP response:', soapResponse)
+				const result = soapResponse?.RejectInvitationResult || soapResponse
+				return {
+					success: this.extractText(result?.Success) === 'true',
+					message: this.extractText(result?.Message)
+				}
+			})
+		)
+	}
+
+	private parseInvitationsResponse(result: any): any {
+		const success = this.extractText(result?.Success) === 'true'
+		const message = this.extractText(result?.Message)
+		const invitationsNode = result?.Invitations
+		const invitations = this.extractArray(invitationsNode?.InvitationResponse || invitationsNode).map((inv: any) => ({
+			id: this.extractText(inv?.Id),
+			communityId: this.extractText(inv?.CommunityId),
+			communityTitle: this.extractText(inv?.CommunityTitle),
+			communityDescription: this.extractText(inv?.CommunityDescription),
+			invitedByName: this.extractText(inv?.InvitedByName),
+			invitedByCedula: this.extractText(inv?.InvitedByCedula),
+			createdAt: this.extractText(inv?.CreatedAt)
+		}))
+
+		console.log('[CommunityService] Parsed invitations:', invitations)
+		return { success, message, invitations }
 	}
 }

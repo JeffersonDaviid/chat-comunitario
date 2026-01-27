@@ -24,7 +24,7 @@ interface FilePreview {
 
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnChanges {
-    @ViewChild('scrollContainer') private scrollContainer!: ElementRef
+    @ViewChild('scrollContainer') private readonly scrollContainer!: ElementRef
     
     // Inputs para uso embebido en dashboard
     @Input() communityId = ''
@@ -49,10 +49,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
     allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
 
     constructor(
-        private route: ActivatedRoute,
-        private ws: WebsocketService,
-        private http: HttpClient,
-        private auth: AuthService
+        private readonly route: ActivatedRoute,
+        private readonly ws: WebsocketService,
+        private readonly http: HttpClient,
+        private readonly auth: AuthService
     ) {}
 
     ngOnInit(): void {
@@ -187,10 +187,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
                     const msgs = (res?.messages || []) as Array<any>
                 
                     const adapted: WSMessage[] = msgs.map((m) => {
-                        // Detectar archivo en múltiples ubicaciones posibles
-                        // Algunos backends lo mandan en 'file', otros en 'attachment', otros en 'media'
-                        const foundFile = m.file || m.attachment || m.media || m.payload?.file || null;
-
                         return {
                             type: 'chat',
                             payload: {
@@ -201,10 +197,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
                                     username: 'Usuario',
                                     avatar: ''
                                 },
-                                // Evitamos asignar "null" string aquí también
                                 text: (m.text === 'null' ? null : m.text) || (m.content === 'null' ? null : m.content),
                                 content: m.content === 'null' ? null : m.content,
-                                file: m.file || m.attachment || m.payload?.file || null,
+                                file: m.file || m.attachment || m.media || m.payload?.file || null,
                                 
                                 channelId: this.channelId,
                                 ts: new Date(m.timestamp).getTime(),
@@ -233,9 +228,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
     }
 
     scrollToBottom(): void {
-        try {
+        if (this.scrollContainer?.nativeElement) {
             this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight
-        } catch (err) {}
+        }
     }
     
     toggleEmojiPicker() {
@@ -245,8 +240,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
     addEmoji(event: any) {
         const emoji = event.emoji.native;
         this.outMsg += emoji;
-    
-        // this.showEmojiPicker = false; 
     }
     
     
@@ -502,7 +495,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
 
     isMine(m: WSMessage): boolean {
         let p = m.payload
-        if (p && p.payload) p = p.payload
+        if (p?.payload) p = p.payload
 
         const msgCedula = p?.cedula || p?.sender?.cedula || p?.senderId;
         return String(msgCedula) === String(this.cedula)
@@ -515,9 +508,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         return this.getUserName(current) === this.getUserName(prev)
     }
 
-    // Copia esto dentro de tu ChatComponent
     renderMessage(m: WSMessage): string | null {
-        // Reutiliza la lógica de limpieza
         return this.extractContent(m);
     }
 

@@ -54,6 +54,19 @@ export class DashboardComponent implements OnInit {
 	createChannelError = ''
 	selectedCommunityIdForChannel = ''
 
+	// Invitaciones pendientes
+	pendingInvitations: Array<{
+		id: string
+		communityId: string
+		communityTitle: string
+		communityDescription: string
+		invitedByName: string
+		invitedByCedula: string
+		createdAt: string
+	}> = []
+	showInvitationsPanel = false
+	processingInvitation = ''
+
 	// Form
 	communityForm = this.fb.group({
 		title: ['', [Validators.required, Validators.minLength(3)]],
@@ -98,6 +111,7 @@ export class DashboardComponent implements OnInit {
 			return
 		}
 		this.fetchCommunities()
+		this.fetchPendingInvitations()
 	}
 
 	profileUrl(): string {
@@ -114,7 +128,7 @@ export class DashboardComponent implements OnInit {
 				console.log('[Dashboard] Communities received:', res?.communities?.length || 0)
 				
 				// Solo actualizar si recibimos datos
-				if (res && res.communities) {
+				if (res?.communities) {
 					this.communities = res.communities
 					console.log('[Dashboard] Communities updated:', this.communities.length)
 				}
@@ -257,7 +271,7 @@ export class DashboardComponent implements OnInit {
 				if (res.success) {
 					// Eliminar el canal del array local
 					const community = this.communities.find(c => c.id === communityId)
-					if (community && community.channels) {
+					if (community?.channels) {
 						community.channels = community.channels.filter(ch => ch.id !== channelId)
 						console.log('[Dashboard] Channel removed from local list')
 					}
@@ -408,6 +422,69 @@ export class DashboardComponent implements OnInit {
 		// Refrescar solo si realmente invitamos usuarios
 		console.log('[Dashboard] Invite modal closed, refreshing communities from backend...')
 		this.fetchCommunities()
+	}
+
+	// ==================== INVITACIONES ====================
+
+	fetchPendingInvitations() {
+		console.log('[Dashboard] Fetching pending invitations for:', this.userCedula)
+		this.community.getPendingInvitations(this.userCedula).subscribe({
+			next: (res) => {
+				console.log('[Dashboard] Pending invitations response:', res)
+				if (res?.invitations) {
+					this.pendingInvitations = res.invitations
+				}
+			},
+			error: (err) => {
+				console.error('[Dashboard] Error fetching invitations:', err)
+			}
+		})
+	}
+
+	toggleInvitationsPanel() {
+		this.showInvitationsPanel = !this.showInvitationsPanel
+	}
+
+	acceptInvitation(invitation: any) {
+		console.log('[Dashboard] Accepting invitation:', invitation.id)
+		this.processingInvitation = invitation.id
+		
+		this.community.acceptInvitation(invitation.id, this.userCedula).subscribe({
+			next: (res) => {
+				console.log('[Dashboard] Accept invitation result:', res)
+				this.processingInvitation = ''
+				if (res.success) {
+					// Remover de la lista local
+					this.pendingInvitations = this.pendingInvitations.filter(i => i.id !== invitation.id)
+					// Refrescar comunidades
+					this.fetchCommunities()
+				}
+			},
+			error: (err) => {
+				console.error('[Dashboard] Error accepting invitation:', err)
+				this.processingInvitation = ''
+			}
+		})
+	}
+
+	rejectInvitation(invitation: any) {
+		console.log('[Dashboard] Rejecting invitation:', invitation.id)
+		this.processingInvitation = invitation.id
+		
+		this.community.rejectInvitation(invitation.id, this.userCedula).subscribe({
+			next: (res) => {
+				console.log('[Dashboard] Reject invitation result:', res)
+				this.processingInvitation = ''
+				if (res.success) {
+					// Remover de la lista local
+					this.pendingInvitations = this.pendingInvitations.filter(i => i.id !== invitation.id)
+				}
+			},
+			error: (err) => {
+				console.error('[Dashboard] Error rejecting invitation:', err)
+				this.processingInvitation = ''
+			}
+		})
 	}
 
 	get f() {

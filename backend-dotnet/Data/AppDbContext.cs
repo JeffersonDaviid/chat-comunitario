@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<Community> Communities { get; set; }
     public DbSet<CommunityMember> CommunityMembers { get; set; }
+    public DbSet<CommunityInvitation> CommunityInvitations { get; set; }
     public DbSet<Channel> Channels { get; set; }
     public DbSet<ChannelMember> ChannelMembers { get; set; }
     public DbSet<Message> Messages { get; set; }
@@ -95,6 +96,28 @@ public class AppDbContext : DbContext
                   .WithMany(ch => ch.Messages)
                   .HasForeignKey(m => m.ChannelId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // CommunityInvitation configuration
+        modelBuilder.Entity<CommunityInvitation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CommunityId, e.InvitedUserCedula, e.Status });
+
+            entity.HasOne(ci => ci.Community)
+                  .WithMany()
+                  .HasForeignKey(ci => ci.CommunityId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ci => ci.InvitedUser)
+                  .WithMany()
+                  .HasForeignKey(ci => ci.InvitedUserCedula)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(ci => ci.InvitedBy)
+                  .WithMany()
+                  .HasForeignKey(ci => ci.InvitedByCedula)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

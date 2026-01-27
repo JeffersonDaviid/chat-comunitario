@@ -58,6 +58,19 @@
           <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Inicio</span>
         </button>
 
+        <!-- Invitaciones Pendientes -->
+        <button (click)="toggleInvitationsPanel()" title="Invitaciones" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm relative"
+          [ngClass]="{'bg-orange-50 text-orange-700': pendingInvitations.length > 0}">
+          <svg class="w-5 h-5 flex-shrink-0" [ngClass]="pendingInvitations.length > 0 ? 'text-orange-500' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+          <span [class.hidden]="!sidebarExpanded" class="whitespace-nowrap">Invitaciones</span>
+          <span *ngIf="pendingInvitations.length > 0" 
+            class="absolute top-1 right-1 w-5 h-5 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+            {{ pendingInvitations.length }}
+          </span>
+        </button>
+
         <button (click)="viewContacts()" title="Contactos" class="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm">
           <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.488M15 6a3 3 0 11-6 0 3 3 0 016 0zM6 20h12a3 3 0 003-3V7a3 3 0 00-3-3H6a3 3 0 00-3 3v10a3 3 0 003 3z"></path>
@@ -377,4 +390,82 @@
     (onClose)="closeInviteModal()"
     (onUsersInvited)="onInviteUsersSelected($event)"
   ></app-invite-users-modal>
+
+  <!-- Panel de Invitaciones Pendientes -->
+  <div *ngIf="showInvitationsPanel" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-900">Invitaciones Pendientes</h2>
+        <button (click)="toggleInvitationsPanel()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Sin invitaciones -->
+      <div *ngIf="pendingInvitations.length === 0" class="text-center py-12">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">Sin invitaciones</h3>
+        <p class="text-gray-600">No tienes invitaciones pendientes.</p>
+      </div>
+
+      <!-- Lista de invitaciones -->
+      <div *ngIf="pendingInvitations.length > 0" class="flex-1 overflow-y-auto space-y-4">
+        <div *ngFor="let invitation of pendingInvitations" 
+          class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          
+          <div class="flex items-start gap-3">
+            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+              {{ (invitation.communityTitle || 'C').charAt(0).toUpperCase() }}
+            </div>
+            
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-gray-900 truncate">{{ invitation.communityTitle }}</h3>
+              <p class="text-sm text-gray-600 truncate">{{ invitation.communityDescription }}</p>
+              <p class="text-xs text-gray-500 mt-1">
+                Invitado por: <span class="font-medium">{{ invitation.invitedByName }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-4">
+            <button 
+              (click)="acceptInvitation(invitation)"
+              [disabled]="processingInvitation === invitation.id"
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              <svg *ngIf="processingInvitation !== invitation.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span *ngIf="processingInvitation === invitation.id" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+              Aceptar
+            </button>
+            <button 
+              (click)="rejectInvitation(invitation)"
+              [disabled]="processingInvitation === invitation.id"
+              class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              <svg *ngIf="processingInvitation !== invitation.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+              <span *ngIf="processingInvitation === invitation.id" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+              Rechazar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón cerrar -->
+      <div class="mt-4 pt-4 border-t border-gray-200">
+        <button 
+          (click)="toggleInvitationsPanel()"
+          class="w-full px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

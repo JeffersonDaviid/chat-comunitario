@@ -11,13 +11,17 @@ namespace ChatComunitario.Services;
 /// </summary>
 public class CommunityService : ICommunityService
 {
+    private const string CommunityResourceName = "Comunidad";
+    
     private readonly CommunityRepository _communityRepository;
     private readonly UserRepository _userRepository;
+    private readonly ChannelRepository _channelRepository;
 
-    public CommunityService(CommunityRepository communityRepository, UserRepository userRepository)
+    public CommunityService(CommunityRepository communityRepository, UserRepository userRepository, ChannelRepository channelRepository)
     {
         _communityRepository = communityRepository;
         _userRepository = userRepository;
+        _channelRepository = channelRepository;
     }
 
     public async Task<(bool Success, Community? Community, string Message)> CreateCommunityAsync(CreateCommunityDto dto)
@@ -48,12 +52,23 @@ public class CommunityService : ICommunityService
             await _communityRepository.SaveAsync();
             Console.WriteLine($"[DEBUG] Community saved with ID: {community.Id}");
 
+            // Crear canal predeterminado "General"
+            var defaultChannel = new Channel
+            {
+                Name = "General",
+                Description = "Canal general de la comunidad",
+                CommunityId = community.Id
+            };
+            await _channelRepository.AddAsync(defaultChannel);
+            await _channelRepository.SaveAsync();
+            Console.WriteLine($"[DEBUG] Default channel 'General' created with ID: {defaultChannel.Id}");
+
             // Verificar que se guardó
             var savedCommunity = await _communityRepository.GetByIdAsync(community.Id);
             if (savedCommunity == null)
             {
                 Console.WriteLine($"[ERROR] Community was not persisted to database!");
-                throw new Exception("La comunidad no se guardó correctamente");
+                throw new ValidationException("La comunidad no se guardó correctamente");
             }
             
             Console.WriteLine($"[DEBUG] Community verified in database: {savedCommunity.Title}");
@@ -117,7 +132,7 @@ public class CommunityService : ICommunityService
             var community = await _communityRepository.GetByIdWithRelationsAsync(id);
             if (community == null)
             {
-                throw new NotFoundException("Comunidad", id);
+                throw new NotFoundException(CommunityResourceName, id);
             }
 
             var response = MapCommunityToResponse(community);
@@ -141,7 +156,7 @@ public class CommunityService : ICommunityService
             var community = await _communityRepository.GetByIdAsync(id);
             if (community == null)
             {
-                throw new NotFoundException("Comunidad", id);
+                throw new NotFoundException(CommunityResourceName, id);
             }
 
             community.Title = dto.Title;
@@ -169,7 +184,7 @@ public class CommunityService : ICommunityService
             var community = await _communityRepository.GetByIdAsync(id);
             if (community == null)
             {
-                throw new NotFoundException("Comunidad", id);
+                throw new NotFoundException(CommunityResourceName, id);
             }
 
             await _communityRepository.DeleteAsync(community);
@@ -194,7 +209,7 @@ public class CommunityService : ICommunityService
             var community = await _communityRepository.GetByIdAsync(communityId);
             if (community == null)
             {
-                throw new NotFoundException("Comunidad", communityId);
+                throw new NotFoundException(CommunityResourceName, communityId);
             }
 
             var user = await _userRepository.GetByCedulaAsync(dto.CedulaMember);
@@ -240,7 +255,7 @@ public class CommunityService : ICommunityService
             var community = await _communityRepository.GetByIdWithRelationsAsync(communityId);
             if (community == null)
             {
-                throw new NotFoundException("Comunidad", communityId);
+                throw new NotFoundException(CommunityResourceName, communityId);
             }
 
             var membership = community.Members.FirstOrDefault(

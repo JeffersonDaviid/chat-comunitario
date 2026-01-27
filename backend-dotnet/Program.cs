@@ -18,8 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 // REST Controllers
 builder.Services.AddControllers();
 
-// SOAP Services (reemplaza a REST Controllers)
-// builder.Services.AddScoped<IAuthSoapService, AuthSoapService>();
+// SOAP Services
 builder.Services.AddScoped<IAuthSoapService, AuthSoapService>();
 builder.Services.AddScoped<ICommunitySoapService, CommunitySoapService>();
 builder.Services.AddScoped<IChannelSoapService, ChannelSoapService>();
@@ -33,6 +32,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<CommunityRepository>();
+builder.Services.AddScoped<CommunityInvitationRepository>();
 builder.Services.AddScoped<ChannelRepository>();
 builder.Services.AddScoped<ChannelMemberRepository>();
 builder.Services.AddScoped<MessageRepository>();
@@ -44,6 +44,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICommunityService, CommunityService>();
 builder.Services.AddScoped<IChannelService, ChannelService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IInvitationService, InvitationService>();
 
 // CORS Configuration
 builder.Services.AddCors(options =>

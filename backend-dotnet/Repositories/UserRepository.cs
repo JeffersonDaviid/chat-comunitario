@@ -30,4 +30,9 @@ public class UserRepository : Repository<User>
     {
         return await _dbSet.AnyAsync(u => u.Email == email);
     }
+
+    public async Task<bool> ExistsByPhoneAsync(string phone)
+    {
+        return await _dbSet.AnyAsync(u => u.Phone == phone);
+    }
 }

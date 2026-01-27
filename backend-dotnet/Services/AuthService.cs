@@ -50,6 +50,11 @@ public class AuthService : IAuthService
                 throw new ConflictException("El email ya está registrado");
             }
 
+            if (!string.IsNullOrWhiteSpace(dto.Phone) && await _userRepository.ExistsByPhoneAsync(dto.Phone))
+            {
+                throw new ConflictException("El teléfono ya está registrado");
+            }
+
             // Hash de la contraseña
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 

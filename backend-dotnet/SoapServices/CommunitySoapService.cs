@@ -10,11 +10,13 @@ namespace ChatComunitario.SoapServices;
 public class CommunitySoapService : ICommunitySoapService
 {
     private readonly ICommunityService _communityService;
+    private readonly IInvitationService _invitationService;
     private readonly UserRepository _userRepository;
 
-    public CommunitySoapService(ICommunityService communityService, UserRepository userRepository)
+    public CommunitySoapService(ICommunityService communityService, IInvitationService invitationService, UserRepository userRepository)
     {
         _communityService = communityService;
+        _invitationService = invitationService;
         _userRepository = userRepository;
     }
 
@@ -193,9 +195,16 @@ public class CommunitySoapService : ICommunitySoapService
 
         try
         {
+            // Obtener la cédula del dueño de la comunidad para usarla como invitedBy
+            var community = await _communityService.GetCommunityByIdAsync(request.CommunityId);
+            var invitedByCedula = community.Community?.OwnerCedula ?? "";
+
             foreach (var cedula in request.UserCedulas)
             {
-                var (success, message) = await _communityService.AddMemberAsync(request.CommunityId, new AddMemberDto { CedulaMember = cedula });
+                var (success, _, message) = await _invitationService.CreateInvitationAsync(
+                    request.CommunityId, 
+                    cedula, 
+                    invitedByCedula);
                 
                 if (success)
                 {
@@ -208,8 +217,8 @@ public class CommunitySoapService : ICommunitySoapService
             }
 
             var finalMessage = errors.Count == 0 
-                ? $"Se invitaron exitosamente {invitedUsers.Count} usuarios" 
-                : $"Se invitaron {invitedUsers.Count} usuarios. Errores: {string.Join("; ", errors)}";
+                ? $"Se enviaron invitaciones a {invitedUsers.Count} usuarios" 
+                : $"Se enviaron {invitedUsers.Count} invitaciones. Errores: {string.Join("; ", errors)}";
 
             return new InviteUsersResponse
             {
@@ -228,5 +237,69 @@ public class CommunitySoapService : ICommunitySoapService
                 InvitedUsers = invitedUsers
             };
         }
+    }
+
+    public async Task<GetPendingInvitationsResponse> GetPendingInvitations(GetPendingInvitationsRequest request)
+    {
+        Console.WriteLine($"[DEBUG] GetPendingInvitations called for user: {request.UserCedula}");
+        
+        try
+        {
+            var (success, invitations, message) = await _invitationService.GetPendingInvitationsAsync(request.UserCedula);
+            
+            var invitationResponses = invitations.Select(i => new InvitationResponse
+            {
+                Id = i.Id,
+                CommunityId = i.CommunityId,
+                CommunityTitle = i.Community?.Title ?? "",
+                CommunityDescription = i.Community?.Description ?? "",
+                InvitedByName = i.InvitedBy != null ? $"{i.InvitedBy.Name} {i.InvitedBy.LastName}" : "",
+                InvitedByCedula = i.InvitedByCedula,
+                CreatedAt = i.CreatedAt
+            }).ToList();
+
+            return new GetPendingInvitationsResponse
+            {
+                Success = success,
+                Message = message,
+                Invitations = invitationResponses
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] Error in GetPendingInvitations: {ex.Message}");
+            return new GetPendingInvitationsResponse
+            {
+                Success = false,
+                Message = $"Error: {ex.Message}",
+                Invitations = new List<InvitationResponse>()
+            };
+        }
+    }
+
+    public async Task<AcceptInvitationResponse> AcceptInvitation(AcceptInvitationRequest request)
+    {
+        Console.WriteLine($"[DEBUG] AcceptInvitation called for invitation: {request.InvitationId}, user: {request.UserCedula}");
+        
+        var (success, message) = await _invitationService.AcceptInvitationAsync(request.InvitationId, request.UserCedula);
+
+        return new AcceptInvitationResponse
+        {
+            Success = success,
+            Message = message
+        };
+    }
+
+    public async Task<RejectInvitationResponse> RejectInvitation(RejectInvitationRequest request)
+    {
+        Console.WriteLine($"[DEBUG] RejectInvitation called for invitation: {request.InvitationId}, user: {request.UserCedula}");
+        
+        var (success, message) = await _invitationService.RejectInvitationAsync(request.InvitationId, request.UserCedula);
+
+        return new RejectInvitationResponse
+        {
+            Success = success,
+            Message = message
+        };
     }
 }
