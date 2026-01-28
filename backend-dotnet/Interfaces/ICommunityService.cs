@@ -86,6 +86,9 @@ public class ChannelResponse
     
     [DataMember]
     public string Description { get; set; } = string.Empty;
+    
+    [DataMember]
+    public bool IsGeneral { get; set; }
 }
 
 [DataContract]

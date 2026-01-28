@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<CommunityInvitation> CommunityInvitations { get; set; }
     public DbSet<Channel> Channels { get; set; }
     public DbSet<ChannelMember> ChannelMembers { get; set; }
+    public DbSet<ChannelInvitation> ChannelInvitations { get; set; }
     public DbSet<Message> Messages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -107,6 +108,28 @@ public class AppDbContext : DbContext
             entity.HasOne(ci => ci.Community)
                   .WithMany()
                   .HasForeignKey(ci => ci.CommunityId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ci => ci.InvitedUser)
+                  .WithMany()
+                  .HasForeignKey(ci => ci.InvitedUserCedula)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(ci => ci.InvitedBy)
+                  .WithMany()
+                  .HasForeignKey(ci => ci.InvitedByCedula)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ChannelInvitation configuration
+        modelBuilder.Entity<ChannelInvitation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ChannelId, e.InvitedUserCedula, e.Status });
+
+            entity.HasOne(ci => ci.Channel)
+                  .WithMany()
+                  .HasForeignKey(ci => ci.ChannelId)
                   .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(ci => ci.InvitedUser)

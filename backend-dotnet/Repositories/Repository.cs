@@ -35,11 +35,13 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task AddAsync(T entity)
     {
+        Console.WriteLine($"[Repository] AddAsync called for entity type: {typeof(T).Name}");
         await _dbSet.AddAsync(entity);
     }
 
     public async Task UpdateAsync(T entity)
     {
+        Console.WriteLine($"[Repository] UpdateAsync called for entity type: {typeof(T).Name}");
         _dbSet.Update(entity);
         await Task.CompletedTask;
     }
@@ -52,7 +54,16 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task SaveAsync()
     {
-        var result = await _context.SaveChangesAsync();
-        Console.WriteLine($"[Repository] SaveChangesAsync completed - {result} records affected");
+        try
+        {
+            var result = await _context.SaveChangesAsync();
+            Console.WriteLine($"[Repository] SaveChangesAsync completed - {result} records affected");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Repository] SaveChangesAsync FAILED: {ex.Message}");
+            Console.WriteLine($"[Repository] Inner Exception: {ex.InnerException?.Message}");
+            throw;
+        }
     }
 }

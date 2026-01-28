@@ -17,6 +17,12 @@ public class Channel
 
     public Guid CommunityId { get; set; }
 
+    /// <summary>
+    /// Indica si es el canal General (por defecto) de la comunidad.
+    /// Todos los miembros de la comunidad son automáticamente miembros de este canal.
+    /// </summary>
+    public bool IsGeneral { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties

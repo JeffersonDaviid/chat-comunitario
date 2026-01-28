@@ -1,11 +1,13 @@
-import { Component, OnInit } from '@angular/core'
+import { Component, OnInit, OnDestroy } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { HttpClientModule } from '@angular/common/http'
 import { Router } from '@angular/router'
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms'
+import { Subscription } from 'rxjs'
 import { CommunityService } from '../../services/community.service'
 import { ChannelService } from '../../services/channel.service'
 import { AuthService } from '../../services/auth.service'
+import { NotificationService, InvitationNotification } from '../../services/notification.service'
 import { InviteUsersModalComponent } from '../../components/invite-users-modal/invite-users-modal.component'
 import { ChatComponent } from '../../components/chat/chat.component'
 
@@ -16,7 +18,7 @@ import { ChatComponent } from '../../components/chat/chat.component'
 	templateUrl: './dashboard.component.html',
 	styleUrl: './dashboard.component.css',
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
 	userName = ''
 	userEmail = ''
 	userCedula = ''
@@ -33,6 +35,9 @@ export class DashboardComponent implements OnInit {
 	}> = []
 	loading = false
 	errorMsg = ''
+	
+	// Subscripciones para notificaciones en tiempo real
+	private notificationSub?: Subscription
 
 	// Chat integrado
 	showChat = false
@@ -82,6 +87,7 @@ export class DashboardComponent implements OnInit {
 		private readonly community: CommunityService,
 		private readonly channel: ChannelService,
 		private readonly auth: AuthService,
+		private readonly notification: NotificationService,
 		private readonly router: Router,
 		private readonly fb: FormBuilder
 	) {}
@@ -112,6 +118,48 @@ export class DashboardComponent implements OnInit {
 		}
 		this.fetchCommunities()
 		this.fetchPendingInvitations()
+		this.setupNotificationListener()
+	}
+
+	ngOnDestroy(): void {
+		this.notificationSub?.unsubscribe()
+		this.notification.disconnect()
+	}
+
+	/**
+	 * Configura el listener de notificaciones en tiempo real
+	 */
+	private setupNotificationListener(): void {
+		// Conectar al hub de notificaciones
+		this.notification.connect(this.userCedula)
+
+		// Escuchar nuevas invitaciones
+		this.notificationSub = this.notification.onNewInvitation().subscribe({
+			next: (invitation) => {
+				console.log('[Dashboard] Nueva invitación recibida en tiempo real:', invitation)
+				
+				// Añadir la invitación a la lista si no existe ya
+				const exists = this.pendingInvitations.some(inv => inv.id === invitation.id)
+				if (!exists) {
+					this.pendingInvitations = [{
+						id: invitation.id,
+						communityId: invitation.communityId,
+						communityTitle: invitation.communityTitle,
+						communityDescription: invitation.communityDescription,
+						invitedByName: invitation.invitedByName,
+						invitedByCedula: invitation.invitedByCedula,
+						createdAt: invitation.createdAt
+					}, ...this.pendingInvitations]
+					
+					// Mostrar el panel de invitaciones automáticamente
+					this.showInvitationsPanel = true
+					console.log('[Dashboard] Panel de invitaciones mostrado automáticamente')
+				}
+			},
+			error: (err) => {
+				console.error('[Dashboard] Error en notificación:', err)
+			}
+		})
 	}
 
 	profileUrl(): string {
@@ -153,6 +201,23 @@ export class DashboardComponent implements OnInit {
 		this.showChat = true
 		
 		console.log('[Dashboard] Abriendo chat:', { commId, channelId, communityName: this.activeCommunityName, channelName: this.activeChannelName })
+	}
+
+	/**
+	 * Abre el canal General de una comunidad (o el primer canal disponible)
+	 */
+	openGeneralChannel(community: any) {
+		if (!community?.channels || community.channels.length === 0) {
+			console.warn('[Dashboard] La comunidad no tiene canales')
+			return
+		}
+
+		// Buscar el canal General (isGeneral = true) o el primero de la lista
+		const generalChannel = community.channels.find((ch: any) => ch.isGeneral) || community.channels[0]
+		
+		if (generalChannel) {
+			this.goChannel(community.id, generalChannel.id)
+		}
 	}
 
 	closeChat() {
@@ -432,11 +497,18 @@ export class DashboardComponent implements OnInit {
 			next: (res) => {
 				console.log('[Dashboard] Pending invitations response:', res)
 				if (res?.invitations) {
-					this.pendingInvitations = res.invitations
+					// Filtrar invitaciones que tengan un ID válido
+					this.pendingInvitations = res.invitations.filter((inv: any) => 
+						inv.id && inv.id !== '' && inv.id !== 'null' && inv.id !== 'undefined'
+					)
+					console.log('[Dashboard] Filtered pending invitations:', this.pendingInvitations)
+				} else {
+					this.pendingInvitations = []
 				}
 			},
 			error: (err) => {
 				console.error('[Dashboard] Error fetching invitations:', err)
+				this.pendingInvitations = []
 			}
 		})
 	}
@@ -446,7 +518,15 @@ export class DashboardComponent implements OnInit {
 	}
 
 	acceptInvitation(invitation: any) {
-		console.log('[Dashboard] Accepting invitation:', invitation.id)
+		console.log('[Dashboard] Accepting invitation - full object:', invitation)
+		console.log('[Dashboard] Invitation ID:', invitation.id)
+		console.log('[Dashboard] Invitation ID type:', typeof invitation.id)
+		
+		if (!invitation.id) {
+			console.error('[Dashboard] Invalid invitation ID!')
+			return
+		}
+		
 		this.processingInvitation = invitation.id
 		
 		this.community.acceptInvitation(invitation.id, this.userCedula).subscribe({
@@ -468,7 +548,14 @@ export class DashboardComponent implements OnInit {
 	}
 
 	rejectInvitation(invitation: any) {
-		console.log('[Dashboard] Rejecting invitation:', invitation.id)
+		console.log('[Dashboard] Rejecting invitation - full object:', invitation)
+		console.log('[Dashboard] Invitation ID:', invitation.id)
+		
+		if (!invitation.id) {
+			console.error('[Dashboard] Invalid invitation ID!')
+			return
+		}
+		
 		this.processingInvitation = invitation.id
 		
 		this.community.rejectInvitation(invitation.id, this.userCedula).subscribe({

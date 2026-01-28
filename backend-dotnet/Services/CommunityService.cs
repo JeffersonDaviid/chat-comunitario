@@ -16,12 +16,18 @@ public class CommunityService : ICommunityService
     private readonly CommunityRepository _communityRepository;
     private readonly UserRepository _userRepository;
     private readonly ChannelRepository _channelRepository;
+    private readonly ChannelMemberRepository _channelMemberRepository;
 
-    public CommunityService(CommunityRepository communityRepository, UserRepository userRepository, ChannelRepository channelRepository)
+    public CommunityService(
+        CommunityRepository communityRepository, 
+        UserRepository userRepository, 
+        ChannelRepository channelRepository,
+        ChannelMemberRepository channelMemberRepository)
     {
         _communityRepository = communityRepository;
         _userRepository = userRepository;
         _channelRepository = channelRepository;
+        _channelMemberRepository = channelMemberRepository;
     }
 
     public async Task<(bool Success, Community? Community, string Message)> CreateCommunityAsync(CreateCommunityDto dto)
@@ -57,11 +63,22 @@ public class CommunityService : ICommunityService
             {
                 Name = "General",
                 Description = "Canal general de la comunidad",
-                CommunityId = community.Id
+                CommunityId = community.Id,
+                IsGeneral = true
             };
             await _channelRepository.AddAsync(defaultChannel);
             await _channelRepository.SaveAsync();
             Console.WriteLine($"[DEBUG] Default channel 'General' created with ID: {defaultChannel.Id}");
+
+            // Agregar al dueño como miembro del canal General
+            var ownerChannelMember = new ChannelMember
+            {
+                ChannelId = defaultChannel.Id,
+                UserCedula = dto.OwnerCedula
+            };
+            defaultChannel.Members.Add(ownerChannelMember);
+            await _channelRepository.SaveAsync();
+            Console.WriteLine($"[DEBUG] Owner {dto.OwnerCedula} added to General channel");
 
             // Verificar que se guardó
             var savedCommunity = await _communityRepository.GetByIdAsync(community.Id);
@@ -206,35 +223,61 @@ public class CommunityService : ICommunityService
     {
         try
         {
+            Console.WriteLine($"[DEBUG] AddMemberAsync - CommunityId: {communityId}, UserCedula: {dto.CedulaMember}");
+            
+            // Verificar que la comunidad existe (sin cargar relaciones para evitar tracking)
             var community = await _communityRepository.GetByIdAsync(communityId);
             if (community == null)
             {
                 throw new NotFoundException(CommunityResourceName, communityId);
             }
 
+            // Verificar que el usuario existe
             var user = await _userRepository.GetByCedulaAsync(dto.CedulaMember);
             if (user == null)
             {
                 throw new NotFoundException("Usuario", dto.CedulaMember);
             }
 
-            var existingMember = community.Members.FirstOrDefault(
-                m => m.UserCedula == dto.CedulaMember);
-
-            if (existingMember != null)
+            // Verificar si ya es miembro usando el repositorio directamente
+            var existingMember = await _communityRepository.IsMemberAsync(communityId, dto.CedulaMember);
+            if (existingMember)
             {
                 throw new ConflictException("El usuario ya es miembro de la comunidad");
             }
 
+            // Crear la membresía directamente sin usar la navegación de la comunidad
             var membership = new CommunityMember
             {
                 CommunityId = communityId,
                 UserCedula = dto.CedulaMember
             };
 
-            community.Members.Add(membership);
-            await _communityRepository.UpdateAsync(community);
-            await _communityRepository.SaveAsync();
+            await _communityRepository.AddMemberDirectAsync(membership);
+            Console.WriteLine($"[DEBUG] AddMemberAsync - Member {dto.CedulaMember} added to community");
+
+            // Agregar automáticamente al canal General usando query directa
+            var generalChannel = await _channelRepository.GetGeneralChannelAsync(communityId);
+            if (generalChannel != null)
+            {
+                // Verificar si ya es miembro del canal
+                var isChannelMember = await _channelMemberRepository.IsMemberAsync(generalChannel.Id, dto.CedulaMember);
+                if (!isChannelMember)
+                {
+                    var channelMember = new ChannelMember
+                    {
+                        ChannelId = generalChannel.Id,
+                        UserCedula = dto.CedulaMember
+                    };
+                    await _channelMemberRepository.AddAsync(channelMember);
+                    await _channelMemberRepository.SaveAsync();
+                    Console.WriteLine($"[DEBUG] AddMemberAsync - Member {dto.CedulaMember} added to General channel");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[WARN] AddMemberAsync - No General channel found for community {communityId}");
+            }
 
             return (true, "Miembro agregado exitosamente");
         }
@@ -310,7 +353,8 @@ public class CommunityService : ICommunityService
             {
                 Id = ch.Id,
                 Name = ch.Name,
-                Description = ch.Description
+                Description = ch.Description,
+                IsGeneral = ch.IsGeneral
             }).ToList()
         };
     }

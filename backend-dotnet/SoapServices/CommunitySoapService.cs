@@ -181,13 +181,15 @@ public class CommunitySoapService : ICommunitySoapService
 
     public async Task<InviteUsersResponse> InviteUsers(InviteUsersRequest request)
     {
-        Console.WriteLine($"[DEBUG] InviteUsers called with CommunityId: {request.CommunityId}, UserCedulas count: {request.UserCedulas?.Count ?? 0}");
-        if (request.UserCedulas != null)
+        // Parsear las cédulas del CSV
+        var userCedulas = !string.IsNullOrWhiteSpace(request.UserCedulasCSV)
+            ? request.UserCedulasCSV.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+            : new List<string>();
+            
+        Console.WriteLine($"[DEBUG] InviteUsers called with CommunityId: {request.CommunityId}, UserCedulasCSV: '{request.UserCedulasCSV}', Parsed count: {userCedulas.Count}");
+        foreach (var cedula in userCedulas)
         {
-            foreach (var cedula in request.UserCedulas)
-            {
-                Console.WriteLine($"[DEBUG] Cedula to invite: {cedula}");
-            }
+            Console.WriteLine($"[DEBUG] Cedula to invite: {cedula}");
         }
         
         var invitedUsers = new List<string>();
@@ -199,7 +201,7 @@ public class CommunitySoapService : ICommunitySoapService
             var community = await _communityService.GetCommunityByIdAsync(request.CommunityId);
             var invitedByCedula = community.Community?.OwnerCedula ?? "";
 
-            foreach (var cedula in request.UserCedulas)
+            foreach (var cedula in userCedulas)
             {
                 var (success, _, message) = await _invitationService.CreateInvitationAsync(
                     request.CommunityId, 
@@ -279,7 +281,19 @@ public class CommunitySoapService : ICommunitySoapService
 
     public async Task<AcceptInvitationResponse> AcceptInvitation(AcceptInvitationRequest request)
     {
-        Console.WriteLine($"[DEBUG] AcceptInvitation called for invitation: {request.InvitationId}, user: {request.UserCedula}");
+        Console.WriteLine($"[DEBUG] AcceptInvitation called");
+        Console.WriteLine($"[DEBUG] Raw InvitationId: '{request.InvitationId}'");
+        Console.WriteLine($"[DEBUG] UserCedula: '{request.UserCedula}'");
+        Console.WriteLine($"[DEBUG] InvitationId type: {request.InvitationId.GetType()}, IsEmpty: {request.InvitationId == Guid.Empty}");
+        
+        if (request.InvitationId == Guid.Empty)
+        {
+            return new AcceptInvitationResponse
+            {
+                Success = false,
+                Message = "El ID de la invitación no es válido (vacío)"
+            };
+        }
         
         var (success, message) = await _invitationService.AcceptInvitationAsync(request.InvitationId, request.UserCedula);
 

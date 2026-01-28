@@ -37,4 +37,14 @@ public class ChannelMemberRepository : Repository<ChannelMember>
         await SaveAsync();
         return true;
     }
+
+    /// <summary>
+    /// Verifica si un usuario es miembro de un canal
+    /// </summary>
+    public async Task<bool> IsMemberAsync(Guid channelId, string userCedula)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .AnyAsync(cm => cm.ChannelId == channelId && cm.UserCedula == userCedula);
+    }
 }

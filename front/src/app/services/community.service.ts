@@ -190,9 +190,10 @@ export class CommunityService {
 
 	// POST - Invitar múltiples usuarios a una comunidad
 	inviteUsers(communityId: string, userCedulas: string[]): Observable<any> {
+		// Enviar las cédulas como CSV en lugar de array para evitar problemas de serialización SOAP
 		const requestBody = this.soap.buildRequestBody({
 			communityId: communityId,
-			userCedulas: userCedulas
+			userCedulasCSV: userCedulas.join(',')
 		})
 
 		return this.soap.call(this.communityServiceUrl, 'InviteUsers', requestBody).pipe(
@@ -238,7 +239,8 @@ export class CommunityService {
 				id: this.extractText(ch?.Id),
 				name: this.extractText(ch?.Name),
 				description: this.extractText(ch?.Description),
-				communityId: this.extractText(ch?.CommunityId)
+				communityId: this.extractText(ch?.CommunityId),
+				isGeneral: this.extractText(ch?.IsGeneral) === 'true'
 			}
 			console.log('[CommunityService] Parsed channel:', channel)
 			return channel
@@ -269,6 +271,10 @@ export class CommunityService {
 
 	private extractArray(node: any): any[] {
 		if (!node) return []
+		// Si es un objeto vacío, retornar array vacío
+		if (typeof node === 'object' && !Array.isArray(node) && Object.keys(node).length === 0) {
+			return []
+		}
 		return Array.isArray(node) ? node : [node]
 	}
 
@@ -325,11 +331,14 @@ export class CommunityService {
 
 	// POST - Aceptar invitación
 	acceptInvitation(invitationId: string, userCedula: string): Observable<any> {
-		console.log('[CommunityService] Accepting invitation:', invitationId)
+		console.log('[CommunityService] Accepting invitation:', invitationId, 'Type:', typeof invitationId)
+		console.log('[CommunityService] User cedula:', userCedula)
+		
 		const requestBody = this.soap.buildRequestBody({
 			invitationId: invitationId,
 			userCedula: userCedula
 		})
+		console.log('[CommunityService] Request body:', requestBody)
 
 		return this.soap.call(this.communityServiceUrl, 'AcceptInvitation', requestBody).pipe(
 			map((soapResponse) => {
@@ -367,17 +376,42 @@ export class CommunityService {
 		const success = this.extractText(result?.Success) === 'true'
 		const message = this.extractText(result?.Message)
 		const invitationsNode = result?.Invitations
-		const invitations = this.extractArray(invitationsNode?.InvitationResponse || invitationsNode).map((inv: any) => ({
-			id: this.extractText(inv?.Id),
-			communityId: this.extractText(inv?.CommunityId),
-			communityTitle: this.extractText(inv?.CommunityTitle),
-			communityDescription: this.extractText(inv?.CommunityDescription),
-			invitedByName: this.extractText(inv?.InvitedByName),
-			invitedByCedula: this.extractText(inv?.InvitedByCedula),
-			createdAt: this.extractText(inv?.CreatedAt)
-		}))
+		console.log('[CommunityService] Raw invitations node:', invitationsNode)
+		
+		// Si no hay nodo de invitaciones o está vacío, retornar array vacío
+		if (!invitationsNode) {
+			console.log('[CommunityService] No invitations node found, returning empty array')
+			return { success, message, invitations: [] }
+		}
+		
+		const rawArray = invitationsNode?.InvitationResponse || invitationsNode
+		
+		// Si el array es vacío o no es un objeto válido
+		if (!rawArray || (typeof rawArray === 'object' && Object.keys(rawArray).length === 0)) {
+			console.log('[CommunityService] Invitations node is empty, returning empty array')
+			return { success, message, invitations: [] }
+		}
+		
+		const invitations = this.extractArray(rawArray)
+			.filter((inv: any) => inv && inv.Id) // Solo items con Id válido
+			.map((inv: any) => {
+				console.log('[CommunityService] Raw invitation item:', inv)
+				console.log('[CommunityService] Raw invitation Id:', inv?.Id)
+				
+				const parsed = {
+					id: this.extractText(inv?.Id),
+					communityId: this.extractText(inv?.CommunityId),
+					communityTitle: this.extractText(inv?.CommunityTitle),
+					communityDescription: this.extractText(inv?.CommunityDescription),
+					invitedByName: this.extractText(inv?.InvitedByName),
+					invitedByCedula: this.extractText(inv?.InvitedByCedula),
+					createdAt: this.extractText(inv?.CreatedAt)
+				}
+				console.log('[CommunityService] Parsed invitation:', parsed)
+				return parsed
+			})
 
-		console.log('[CommunityService] Parsed invitations:', invitations)
+		console.log('[CommunityService] Final parsed invitations:', invitations)
 		return { success, message, invitations }
 	}
 }

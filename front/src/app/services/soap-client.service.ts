@@ -147,13 +147,16 @@ ${body}
 			'description': 0,
 			'ownerCedula': 1,
 			'title': 2,
-			// InviteUsersRequest - Order: CommunityId=0, UserCedulas=1
+			// InviteUsersRequest - Order: CommunityId=0, UserCedulasCSV=1
 			'communityId': 0,
-			'userCedulas': 1,
+			'userCedulasCSV': 1,
 			// GetAvailableUsersRequest - Order: ExcludeCedula=0
 			'excludeCedula': 0,
 			// GetCommunitiesByUserRequest - Order: Cedula=0
 			'cedula': 0,
+			// AcceptInvitationRequest / RejectInvitationRequest
+			'invitationId': 0,
+			'userCedula': 1,
 		}
 		
 		// Ordenar las keys por el orden especificado
@@ -171,11 +174,11 @@ ${body}
 			if (value !== null && value !== undefined) {
 				const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1)
 				
-				// Manejar arrays
+				// Manejar arrays - usar namespace correcto para arrays de strings
 				if (Array.isArray(value)) {
-					xml += `        <a:${capitalizedKey}>\n`
+					xml += `        <a:${capitalizedKey} xmlns:b="http://schemas.microsoft.com/2003/10/Serialization/Arrays">\n`
 					for (const item of value) {
-						xml += `          <a:string>${this.escapeXml(String(item))}</a:string>\n`
+						xml += `          <b:string>${this.escapeXml(String(item))}</b:string>\n`
 					}
 					xml += `        </a:${capitalizedKey}>\n`
 				} else {

@@ -35,6 +35,7 @@ builder.Services.AddScoped<CommunityRepository>();
 builder.Services.AddScoped<CommunityInvitationRepository>();
 builder.Services.AddScoped<ChannelRepository>();
 builder.Services.AddScoped<ChannelMemberRepository>();
+builder.Services.AddScoped<ChannelInvitationRepository>();
 builder.Services.AddScoped<MessageRepository>();
 
 // Servicios
@@ -45,6 +46,7 @@ builder.Services.AddScoped<ICommunityService, CommunityService>();
 builder.Services.AddScoped<IChannelService, ChannelService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
+builder.Services.AddScoped<IChannelInvitationService, ChannelInvitationService>();
 
 // CORS Configuration
 builder.Services.AddCors(options =>
@@ -135,8 +137,9 @@ SoapEndpointExtensions.UseSoapEndpoint<IAuthSoapService>((IApplicationBuilder)ap
 SoapEndpointExtensions.UseSoapEndpoint<ICommunitySoapService>((IApplicationBuilder)app, "/CommunityService.svc", encoderOptions, SoapSerializer.DataContractSerializer);
 SoapEndpointExtensions.UseSoapEndpoint<IChannelSoapService>((IApplicationBuilder)app, "/ChannelService.svc", encoderOptions, SoapSerializer.DataContractSerializer);
 
-// SignalR Hub endpoint (se mantiene para tiempo real)
+// SignalR Hub endpoints (se mantiene para tiempo real)
 app.MapHub<ChatHub>("/ws");
+app.MapHub<NotificationHub>("/notifications");
 
 app.MapGet("/", () => Results.Content(@"
 <html>
@@ -149,6 +152,7 @@ app.MapGet("/", () => Results.Content(@"
 <li><a href='/CommunityService.svc?wsdl'>CommunityService WSDL</a> - Gestión de comunidades</li>
 <li><a href='/ChannelService.svc?wsdl'>ChannelService WSDL</a> - Gestión de canales</li>
 <li><a href='/ws'>SignalR Hub</a> - Chat en tiempo real</li>
+<li><a href='/notifications'>Notification Hub</a> - Notificaciones de invitaciones</li>
 </ul>
 <p>Puerto: 5000 | Base URL: http://localhost:5000</p>
 </body>

@@ -235,8 +235,11 @@ public class InviteUsersRequest
     [DataMember(Order = 0)]
     public Guid CommunityId { get; set; }
     
+    /// <summary>
+    /// Lista de cédulas separadas por coma
+    /// </summary>
     [DataMember(Order = 1)]
-    public List<string> UserCedulas { get; set; } = new();
+    public string UserCedulasCSV { get; set; } = string.Empty;
 }
 
 [DataContract]
@@ -300,10 +303,10 @@ public class InvitationResponse
 [DataContract]
 public class AcceptInvitationRequest
 {
-    [DataMember]
+    [DataMember(Order = 0)]
     public Guid InvitationId { get; set; }
     
-    [DataMember]
+    [DataMember(Order = 1)]
     public string UserCedula { get; set; } = string.Empty;
 }
 
@@ -320,10 +323,10 @@ public class AcceptInvitationResponse
 [DataContract]
 public class RejectInvitationRequest
 {
-    [DataMember]
+    [DataMember(Order = 0)]
     public Guid InvitationId { get; set; }
     
-    [DataMember]
+    [DataMember(Order = 1)]
     public string UserCedula { get; set; } = string.Empty;
 }
 
