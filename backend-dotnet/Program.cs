@@ -100,7 +100,10 @@ builder.Services.AddAuthentication(options =>
 });
 
 // SignalR
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 52 * 1024 * 1024; // 52MB (ligeramente más que el límite de 50MB del cliente)
+});
 
 var app = builder.Build();
 app.UseStaticFiles(); // Esto sirve archivos de wwwroot

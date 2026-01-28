@@ -41,8 +41,8 @@ public class ChatHub : Hub
         }
 
         // Validar que el canal existe
-        var channelExists = community.Channels.Any(ch => ch.Id.ToString() == channelId);
-        if (!channelExists)
+        var channel = community.Channels.FirstOrDefault(ch => ch.Id.ToString() == channelId);
+        if (channel == null)
         {
             await Clients.Caller.SendAsync(ErrorEvent, "Canal no encontrado en la comunidad");
             return;
@@ -59,6 +59,46 @@ public class ChatHub : Hub
         var user = await _context.Users.FindAsync(cedula);
         var userName = user != null ? $"{user.Name} {user.LastName}" : "Usuario";
 
+        // Obtener el historial de mensajes del canal (últimos 50 mensajes)
+        var messages = await _context.Messages
+            .Where(m => m.ChannelId.ToString() == channelId)
+            .Include(m => m.Sender)
+            .OrderByDescending(m => m.Timestamp)
+            .Take(50)
+            .OrderBy(m => m.Timestamp)
+            .ToListAsync();
+
+        // Enviar historial de mensajes
+        foreach (var message in messages)
+        {
+            var sender = message.Sender ?? new User { Cedula = message.SenderCedula, Name = "Usuario", LastName = "Eliminado" };
+            
+            await Clients.Caller.SendAsync("ReceiveMessage", new
+            {
+                type = "chat",
+                payload = new
+                {
+                    id = message.Id.ToString(),
+                    cedula = message.SenderCedula,
+                    senderId = message.SenderCedula,
+                    sender = new
+                    {
+                        cedula = sender.Cedula,
+                        username = $"{sender.Name} {sender.LastName}".Trim(),
+                        avatar = sender.ProfileImg
+                    },
+                    text = message.Content,
+                    content = message.Content,
+                    file = message.FileUrl,
+                    fileType = message.FileType,
+                    channelId = message.ChannelId.ToString(),
+                    ts = ((DateTimeOffset)message.Timestamp).ToUnixTimeMilliseconds(),
+                    timestamp = message.Timestamp,
+                    isHistory = true // Indicador de mensaje histórico
+                }
+            });
+        }
+
         // Enviar mensaje de bienvenida
         await Clients.Caller.SendAsync("ReceiveMessage", new
         {
@@ -66,16 +106,31 @@ public class ChatHub : Hub
             payload = new
             {
                 communityName = community.Title,
-                channelName = community.Channels.FirstOrDefault(c => c.Id.ToString() == channelId)?.Name ?? "Canal",
-                message = $"Bienvenido {userName}"
+                channelName = channel.Name,
+                message = $"Bienvenido {userName}",
+                messageCount = messages.Count
             }
         });
 
-        Console.WriteLine($"[SignalR] Usuario {cedula} se unió al canal {channelId} en comunidad {communityId}");
+        Console.WriteLine($"[SignalR] Usuario {cedula} se unió al canal {channelId} en comunidad {communityId} - Historial: {messages.Count} mensajes");
     }
 
     public async Task SendMessage(string content, string? fileUrl = null, string? fileType = null)
     {
+        // Validar tipos de archivo permitidos
+        if (!string.IsNullOrEmpty(fileType))
+        {
+            var allowedTypes = new[] { "image/jpeg", "image/png", "application/pdf" };
+            if (!allowedTypes.Contains(fileType.ToLower()))
+            {
+                await Clients.Caller.SendAsync(ErrorEvent, "Tipo de archivo no permitido. Use JPG, PNG o PDF");
+                Console.WriteLine($"[SignalR] Archivo rechazado: tipo no permitido {fileType}");
+                return;
+            }
+
+            Console.WriteLine($"[SignalR] Validación de tipo: {fileType} ✓");
+        }
+
         if (!_connections.TryGetValue(Context.ConnectionId, out var connectionInfo))
         {
             await Clients.Caller.SendAsync(ErrorEvent, "No estás conectado a ningún canal");

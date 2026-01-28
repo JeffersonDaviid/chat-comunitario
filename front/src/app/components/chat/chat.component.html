@@ -50,7 +50,7 @@
           <ng-container *ngIf="isSameUser(i)">
             <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pt-1"
                   [ngClass]="isMine(m) ? 'pl-1' : 'pr-1'">
-                {{ m.payload?.ts | date:'HH:mm' }}
+                {{ formatTime(m.payload?.ts || m.payload?.timestamp) }}
             </span>
           </ng-container>
       </div>
@@ -65,7 +65,7 @@
             {{ getUserName(m) }}
           </span>
           <span class="text-xs text-gray-400">
-            {{ m.payload?.ts | date:'shortTime' }}
+            {{ formatTime(m.payload?.ts || m.payload?.timestamp) }}
           </span>
         </div>
 
@@ -161,7 +161,7 @@
                 type="file" 
                 class="hidden" 
                 (change)="onFileSelected($event)"
-                accept="image/*,.pdf,.doc,.docx,.txt"
+                accept=".jpg,.jpeg,.png,.pdf"
                 [disabled]="!connected"
               >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

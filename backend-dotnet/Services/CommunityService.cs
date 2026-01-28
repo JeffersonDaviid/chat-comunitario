@@ -49,46 +49,44 @@ public class CommunityService : ICommunityService
             {
                 Title = dto.Title,
                 Description = dto.Description,
-                OwnerCedula = dto.OwnerCedula
+                OwnerCedula = dto.OwnerCedula,
+                Members = new List<CommunityMember>(),
+                Channels = new List<Channel>()
             };
-
-            await _communityRepository.AddAsync(community);
-            
-            // Guardar cambios inmediatamente
-            await _communityRepository.SaveAsync();
-            Console.WriteLine($"[DEBUG] Community saved with ID: {community.Id}");
 
             // Crear canal predeterminado "General"
             var defaultChannel = new Channel
             {
                 Name = "General",
                 Description = "Canal general de la comunidad",
-                CommunityId = community.Id,
-                IsGeneral = true
+                IsGeneral = true,
+                Members = new List<ChannelMember>()
             };
-            await _channelRepository.AddAsync(defaultChannel);
-            await _channelRepository.SaveAsync();
-            Console.WriteLine($"[DEBUG] Default channel 'General' created with ID: {defaultChannel.Id}");
+
+            // Agregar canal a la comunidad
+            community.Channels.Add(defaultChannel);
+
+            // Agregar al dueño como miembro de la comunidad
+            var ownerCommunityMember = new CommunityMember
+            {
+                UserCedula = dto.OwnerCedula
+            };
+            community.Members.Add(ownerCommunityMember);
 
             // Agregar al dueño como miembro del canal General
             var ownerChannelMember = new ChannelMember
             {
-                ChannelId = defaultChannel.Id,
                 UserCedula = dto.OwnerCedula
             };
             defaultChannel.Members.Add(ownerChannelMember);
-            await _channelRepository.SaveAsync();
-            Console.WriteLine($"[DEBUG] Owner {dto.OwnerCedula} added to General channel");
 
-            // Verificar que se guardó
-            var savedCommunity = await _communityRepository.GetByIdAsync(community.Id);
-            if (savedCommunity == null)
-            {
-                Console.WriteLine($"[ERROR] Community was not persisted to database!");
-                throw new ValidationException("La comunidad no se guardó correctamente");
-            }
+            // Agregar la comunidad y GUARDAR TODO DE UNA VEZ
+            await _communityRepository.AddAsync(community);
+            await _communityRepository.SaveAsync();
             
-            Console.WriteLine($"[DEBUG] Community verified in database: {savedCommunity.Title}");
+            Console.WriteLine($"[DEBUG] Community created with ID: {community.Id}");
+            Console.WriteLine($"[DEBUG] Default channel created with ID: {defaultChannel.Id}");
+            Console.WriteLine($"[DEBUG] Owner {dto.OwnerCedula} added as community member and channel member");
 
             return (true, community, "Comunidad creada exitosamente");
         }

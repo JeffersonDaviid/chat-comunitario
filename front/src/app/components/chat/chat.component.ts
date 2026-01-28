@@ -45,8 +45,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
     
     filePreview: FilePreview | null = null
     maxFileSize = 50 * 1024 * 1024; // 50MB
-    allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-    allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+    allowedImageTypes = ['image/jpeg', 'image/png']
+    allowedDocTypes = ['application/pdf']
 
     constructor(
         private readonly route: ActivatedRoute,
@@ -105,12 +105,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
     }
 
     private connectAndLoadMessages(): void {
-        // SEGUNDO: Cargar historial ANTES de suscribirse a mensajes nuevos
-        if (this.communityId && this.channelId) {
-            this.loadHistory()
-        }
-
-        // TERCERO: suscribirse a mensajes en vivo
+        // PRIMERO: Suscribirse a mensajes en vivo
         this.subMsg = this.ws.messages$().subscribe((msg) => {
             console.log('[Chat] Mensaje recibido del WS:', msg.type, msg.payload?.message || msg.payload?.text || msg.payload?.content)
             
@@ -119,6 +114,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
                 this.communityName = msg.payload.communityName
                 this.channelName = msg.payload.channelName
                 console.log(`[Chat] Nombres recibidos del WS - Comunidad: ${this.communityName}, Canal: ${this.channelName}`)
+                // Después de recibir bienvenida, cargar historial
+                if (this.messages.length === 0) {
+                    this.loadHistory()
+                }
                 return // No agregar el mensaje de bienvenida a la lista
             }
             
@@ -149,9 +148,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
             console.log(`[Chat] WebSocket conectado: ${state}`)
         })
 
-        // TERCERO: establecer identidad y conectar
+        // SEGUNDO: Establecer identidad y conectar
         if (this.communityId && this.cedula && this.channelId) {
-            console.log(`[Chat] Llamando setIdentity con reconnect=true`)
+            console.log(`[Chat] Llamando setIdentity - comunityId: ${this.communityId}, channelId: ${this.channelId}`)
             this.ws.setIdentity({
                 communityId: this.communityId,
                 cedula: this.cedula,
@@ -177,46 +176,51 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
     }
 
     loadHistory() {
-        console.log(`[Chat] Iniciando carga de historial...`)
+        console.log(`[Chat] Iniciando carga de historial para canal: ${this.channelId}...`)
         this.http
             .get<any>(
-                `http://localhost:5000/api/auth/communities/${this.communityId}/channels/${this.channelId}/messages`
+                `http://localhost:5000/api/message/channel/${this.communityId}/${this.channelId}?limit=50`
             )
             .subscribe({
                 next: (res) => {
                     const msgs = (res?.messages || []) as Array<any>
+                    console.log(`[Chat] Historial recibido: ${msgs.length} mensajes`)
                 
                     const adapted: WSMessage[] = msgs.map((m) => {
                         return {
                             type: 'chat',
+                            messageType: 'chat',
                             payload: {
-                                cedula: m.senderId || m.sender?.cedula,
-                                senderId: m.senderId || m.sender?.cedula,
+                                id: m.id,
+                                cedula: m.cedula || m.senderId || m.sender?.cedula,
+                                senderId: m.senderId || m.sender?.cedula || m.cedula,
                                 sender: m.sender || { 
-                                    cedula: m.senderId,
-                                    username: 'Usuario',
+                                    cedula: m.cedula || m.senderId,
+                                    username: 'Usuario Eliminado',
                                     avatar: ''
                                 },
-                                text: (m.text === 'null' ? null : m.text) || (m.content === 'null' ? null : m.content),
-                                content: m.content === 'null' ? null : m.content,
-                                file: m.file || m.attachment || m.media || m.payload?.file || null,
-                                
-                                channelId: this.channelId,
-                                ts: new Date(m.timestamp).getTime(),
+                                text: m.text || m.content || '',
+                                content: m.content || m.text || '',
+                                file: m.file || null,
+                                fileType: m.fileType || null,
+                                channelId: m.channelId || this.channelId,
+                                ts: m.ts || new Date(m.timestamp).getTime(),
                                 timestamp: m.timestamp,
-                                id: m.id,
+                                isHistory: true
                             },
                         };
                     });
                     
-                    // Invertimos el orden si vienen del más nuevo al más viejo, o concatenamos según tu lógica
-                    // Asumiendo que vienen cronológicos, los ponemos al principio
-                    this.messages = adapted.concat(this.messages)
+                    // Remover mensajes históricos previos y agregar los nuevos
+                    this.messages = adapted;
                     this.shouldScrollToBottom = true
                     
-                    console.log(`[Chat] ✅ Historial cargado. Mensajes visibles: ${this.messages.length}`)
+                    console.log(`[Chat] ✅ Historial cargado. Total de mensajes: ${this.messages.length}`)
                 },
-                error: (err) => console.error('Error cargando historial', err),
+                error: (err) => {
+                    console.error('[Chat] Error cargando historial:', err)
+                    // Continuar sin historial si hay error
+                }
             })
     }
 
@@ -251,7 +255,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         }
 
         if (!this.connected) {
-            alert('No estás conectado. Espera a que se establezca la conexión WebSocket.')
+            console.error('[Chat] WebSocket no conectado. Estado:', this.connected)
+            alert('Esperando conexión WebSocket. Por favor espera un momento...')
             return
         }
 
@@ -284,6 +289,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
                 })
                 
                 this.ws.sendChannelMessage(this.channelId, messagePayload)
+                    .catch(err => {
+                        console.error('[Chat] Error al enviar mensaje con archivo:', err)
+                        alert('Error al enviar mensaje: ' + err.message)
+                    })
                 this.resetForm()
             }
             reader.onerror = (err) => {
@@ -299,6 +308,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
             })
             
             this.ws.sendChannelMessage(this.channelId, messagePayload)
+                .catch(err => {
+                    console.error('[Chat] Error al enviar mensaje:', err)
+                    alert('Error al enviar mensaje: ' + err.message)
+                })
             this.resetForm()
             this.shouldScrollToBottom = true
         }
@@ -324,7 +337,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         const isDocument = this.allowedDocTypes.includes(file.type)
 
         if (!isImage && !isDocument) {
-            alert('Tipo de archivo no permitido. Use imágenes (JPG, PNG, GIF, WebP) o documentos (PDF, Word, TXT)')
+            alert('Tipo de archivo no permitido. Use imágenes (JPG, PNG) o documentos (PDF). Máximo: 50MB')
             return
         }
 
@@ -512,6 +525,41 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         return this.extractContent(m);
     }
 
+    /**
+     * Formatea un timestamp para mostrar de manera amigable
+     * 12:30 (hoy), Ayer 14:20, 5 ene 10:15
+     */
+    formatTime(timestamp: any): string {
+        if (!timestamp) return '';
+        
+        let date: Date;
+        if (typeof timestamp === 'number') {
+            date = new Date(timestamp);
+        } else if (typeof timestamp === 'string') {
+            date = new Date(timestamp);
+        } else if (timestamp instanceof Date) {
+            date = timestamp;
+        } else {
+            return '';
+        }
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        const timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+        if (messageDate.getTime() === today.getTime()) {
+            return timeStr;
+        } else if (messageDate.getTime() === yesterday.getTime()) {
+            return `Ayer ${timeStr}`;
+        } else {
+            const dateStr = date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+            return `${dateStr} ${timeStr}`;
+        }
+    }
     handleImageError(event: any, name: string) {
         if (name === 'Tú') name = this.myFullName;
         event.target.src = this.getInitialsAvatar(name);

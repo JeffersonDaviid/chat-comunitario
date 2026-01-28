@@ -191,6 +191,10 @@ export class WebsocketService implements OnDestroy {
 
 			// Unirse al canal
 			await this.joinChannel(params)
+			
+			// Emitir que estamos conectados DESPUÉS de unirse al canal
+			console.log('[SignalR] Usuario unido al canal, emitiendo estado conectado')
+			this.connectionStatus$.next(true)
 		}
     }
 
@@ -239,25 +243,34 @@ export class WebsocketService implements OnDestroy {
     private async sendMessage(content: string, fileUrl?: string, fileType?: string): Promise<void> {
         if (!this.connection) {
             console.error('[SignalR] Conexión no inicializada')
-            return
+            throw new Error('Conexión no inicializada')
         }
 
-        if (this.connection.state !== signalR.HubConnectionState.Connected) {
-            console.warn(`[SignalR] No conectado (estado: ${this.connection.state}). No se puede enviar el mensaje.`)
-            return
+        const state = this.connection.state;
+        if (state !== signalR.HubConnectionState.Connected) {
+            console.error(`[SignalR] No conectado (estado: ${state}). No se puede enviar el mensaje.`)
+            throw new Error(`No conectado al servidor (estado: ${state})`)
+        }
+
+        // Verificar que estamos en un canal
+        if (!this.lastParams?.channelId) {
+            console.error('[SignalR] No hay canal seleccionado')
+            throw new Error('No estás conectado a ningún canal')
         }
 
         try {
             console.log('[SignalR] Enviando mensaje:', {
                 contentLength: content.length,
                 hasFile: !!fileUrl,
-                fileType
+                fileType,
+                channelId: this.lastParams.channelId
             })
 
             await this.connection.invoke('SendMessage', content, fileUrl || null, fileType || null)
             console.log('[SignalR] Mensaje enviado exitosamente')
         } catch (err) {
             console.error('[SignalR] Error al enviar mensaje:', err)
+            throw err
         }
     }
 
