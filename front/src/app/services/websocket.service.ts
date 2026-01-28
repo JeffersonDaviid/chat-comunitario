@@ -210,37 +210,40 @@ export class WebsocketService implements OnDestroy {
      */
     public async sendChannelMessage(channelId: string, content: string | any): Promise<void> {
         let textContent = ''
-        let fileUrl: string | undefined = undefined
+        let fileData: string | undefined = undefined
         let fileType: string | undefined = undefined
+        let fileName: string | undefined = undefined
 
         if (typeof content === 'string') {
             textContent = content
         } else {
             textContent = content.text || content.content || ''
             
-            // Extraer fileUrl y fileType del objeto file si existe
+            // Extraer fileData, fileType y fileName del objeto file si existe
             if (content.file) {
                 if (typeof content.file === 'string') {
-                    // Si ya es una URL
-                    fileUrl = content.file
+                    // Si ya es una URL/base64
+                    fileData = content.file
                 } else if (content.file.data) {
                     // Si es un objeto con datos base64
-                    fileUrl = content.file.data
+                    fileData = content.file.data
                     fileType = content.file.type || content.fileType
+                    fileName = content.file.name || content.fileName
                 }
             } else if (content.fileUrl) {
-                fileUrl = content.fileUrl
+                fileData = content.fileUrl
                 fileType = content.fileType
+                fileName = content.fileName
             }
         }
 
-        await this.sendMessage(textContent, fileUrl, fileType)
+        await this.sendMessage(textContent, fileData, fileType, fileName)
     }
 
     /**
      * Envía un mensaje a través de SignalR
      */
-    private async sendMessage(content: string, fileUrl?: string, fileType?: string): Promise<void> {
+    private async sendMessage(content: string, fileData?: string, fileType?: string, fileName?: string): Promise<void> {
         if (!this.connection) {
             console.error('[SignalR] Conexión no inicializada')
             throw new Error('Conexión no inicializada')
@@ -261,12 +264,13 @@ export class WebsocketService implements OnDestroy {
         try {
             console.log('[SignalR] Enviando mensaje:', {
                 contentLength: content.length,
-                hasFile: !!fileUrl,
+                hasFile: !!fileData,
                 fileType,
+                fileName,
                 channelId: this.lastParams.channelId
             })
 
-            await this.connection.invoke('SendMessage', content, fileUrl || null, fileType || null)
+            await this.connection.invoke('SendMessage', content, fileData || null, fileType || null, fileName || null)
             console.log('[SignalR] Mensaje enviado exitosamente')
         } catch (err) {
             console.error('[SignalR] Error al enviar mensaje:', err)

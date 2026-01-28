@@ -79,7 +79,7 @@
           
           <div *ngIf="isImage(m)" class="file-preview-container">
             <img 
-                [src]="m.payload?.file?.data || m.payload?.payload?.file?.data" 
+                [src]="getFileUrl(m)" 
                 class="max-w-xs rounded shadow-md cursor-pointer hover:opacity-90 transition-opacity"
                 alt="Imagen compartida"
             >
@@ -91,15 +91,18 @@
                  (click)="downloadFile(m)">
                  
               <div class="w-10 h-10 flex items-center justify-center bg-blue-100 rounded text-blue-600 font-bold text-xs flex-shrink-0">
-                {{ getFileExtension(m.payload?.file?.name || m.payload?.payload?.file?.name || 'FILE') }}
+                {{ getFileExtension(getFileName(m)) }}
               </div>
               
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-gray-800 truncate">
-                  {{ m.payload?.file?.name || m.payload?.payload?.file?.name }}
+                  {{ getFileName(m) }}
                 </p>
-                <p class="text-xs text-gray-500">
-                  {{ (m.payload?.file?.size || m.payload?.payload?.file?.size || 0) | number }} bytes
+                <p *ngIf="getFileSize(m) > 0" class="text-xs text-gray-500">
+                  {{ getFileSize(m) | number }} bytes
+                </p>
+                <p *ngIf="getFileSize(m) === 0" class="text-xs text-gray-500">
+                  Descargar archivo
                 </p>
               </div>
               

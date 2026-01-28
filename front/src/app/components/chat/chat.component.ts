@@ -361,19 +361,44 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         if (!p) return
         if (p.payload) p = p.payload
 
-        let file = p.file
+        let fileUrl: string | null = null
         
-        // Si el archivo está anidado más profundo
-        if (!file && p.payload?.file) {
-            file = p.payload.file
+        // Caso 1: archivo como objeto (envío local, aún no guardado)
+        if (p.file && typeof p.file === 'object' && p.file.data) {
+            const link = document.createElement('a')
+            link.href = p.file.data as string
+            link.download = p.file.name || 'archivo'
+            link.click()
+            return
+        }
+        // Caso 2: archivo como URL del servidor - usar API de descarga
+        else if (p.file && typeof p.file === 'string') {
+            // Extraer el nombre del archivo de la URL
+            const urlParts = p.file.split('/')
+            const guidFileName = urlParts[urlParts.length - 1]
+            // Usar el endpoint de descarga que devuelve el nombre original
+            fileUrl = `http://localhost:5000/api/files/chat/${guidFileName}`
+        }
+        // Caso 3: buscar en estructura anidada
+        else if (p.payload?.file) {
+            const nested = p.payload.file
+            if (typeof nested === 'object' && nested.data) {
+                const link = document.createElement('a')
+                link.href = nested.data as string
+                link.download = nested.name || 'archivo'
+                link.click()
+                return
+            } else if (typeof nested === 'string') {
+                const urlParts = nested.split('/')
+                const guidFileName = urlParts[urlParts.length - 1]
+                fileUrl = `http://localhost:5000/api/files/chat/${guidFileName}`
+            }
         }
         
-        if (!file) return
+        if (!fileUrl) return
 
-        const link = document.createElement('a')
-        link.href = file.data
-        link.download = file.name
-        link.click()
+        // Abrir en nueva pestaña para descargar
+        window.open(fileUrl, '_blank')
     }
 
     getFileExtension(fileName: string): string {
@@ -385,6 +410,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         if (!p) return false
         if (p.payload) p = p.payload
         
+        // Archivo como objeto o como string (URL)
         if (p.file) return true
         
         // Buscar en estructura anidada
@@ -393,17 +419,96 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         return false
     }
 
+    getFileName(m: WSMessage): string {
+        let p = m.payload
+        if (!p) return 'archivo'
+        if (p.payload) p = p.payload
+        
+        // Caso 1: archivo como objeto
+        if (p.file && typeof p.file === 'object' && p.file.name) {
+            return p.file.name
+        }
+        // Caso 2: fileName separado (del servidor)
+        if (p.fileName) {
+            return p.fileName
+        }
+        // Caso 3: estructura anidada
+        if (p.payload?.file?.name) {
+            return p.payload.file.name
+        }
+        if (p.payload?.fileName) {
+            return p.payload.fileName
+        }
+        
+        return 'archivo'
+    }
+
+    getFileSize(m: WSMessage): number {
+        let p = m.payload
+        if (!p) return 0
+        if (p.payload) p = p.payload
+        
+        // Caso 1: archivo como objeto con size
+        if (p.file && typeof p.file === 'object' && p.file.size) {
+            return p.file.size
+        }
+        // Caso 2: estructura anidada
+        if (p.payload?.file?.size) {
+            return p.payload.file.size
+        }
+        
+        // No tenemos el tamaño (archivos del servidor)
+        return 0
+    }
+
+    getFileUrl(m: WSMessage): string {
+        let p = m.payload
+        if (!p) return ''
+        if (p.payload) p = p.payload
+        
+        // Caso 1: archivo como objeto con data (base64)
+        if (p.file && typeof p.file === 'object' && p.file.data) {
+            return p.file.data
+        }
+        // Caso 2: archivo como URL string
+        if (p.file && typeof p.file === 'string') {
+            return p.file.startsWith('http') ? p.file : `http://localhost:5000${p.file}`
+        }
+        // Caso 3: estructura anidada
+        if (p.payload?.file) {
+            const nested = p.payload.file
+            if (typeof nested === 'object' && nested.data) {
+                return nested.data
+            } else if (typeof nested === 'string') {
+                return nested.startsWith('http') ? nested : `http://localhost:5000${nested}`
+            }
+        }
+        
+        return ''
+    }
+
     isImage(m: WSMessage): boolean {
         let p = m.payload
         if (!p) return false
         if (p.payload) p = p.payload
         
-        let file = p.file
-        if (!file && p.payload?.file) {
-            file = p.payload.file
+        // Caso 1: archivo como objeto con type
+        if (p.file && typeof p.file === 'object' && p.file.type) {
+            return this.allowedImageTypes.includes(p.file.type)
+        }
+        // Caso 2: fileType separado (del servidor)
+        if (p.fileType) {
+            return this.allowedImageTypes.includes(p.fileType)
+        }
+        // Caso 3: estructura anidada
+        if (p.payload?.file?.type) {
+            return this.allowedImageTypes.includes(p.payload.file.type)
+        }
+        if (p.payload?.fileType) {
+            return this.allowedImageTypes.includes(p.payload.fileType)
         }
         
-        return file && this.allowedImageTypes.includes(file.type)
+        return false
     }
 
     private cleanup(): void {

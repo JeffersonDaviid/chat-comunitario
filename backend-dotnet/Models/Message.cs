@@ -24,6 +24,9 @@ public class Message
     [StringLength(100)]
     public string? FileType { get; set; }
 
+    [StringLength(255)]
+    public string? FileName { get; set; }
+
     // Navigation properties
     [ForeignKey(nameof(SenderCedula))]
     public User Sender { get; set; } = null!;

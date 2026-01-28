@@ -11,11 +11,13 @@ public class ChatHub : Hub
     private const string ErrorEvent = "Error";
     
     private readonly AppDbContext _context;
+    private readonly IWebHostEnvironment _environment;
     private static readonly Dictionary<string, (string CommunityId, string ChannelId, string Cedula)> _connections = new();
 
-    public ChatHub(AppDbContext context)
+    public ChatHub(AppDbContext context, IWebHostEnvironment environment)
     {
         _context = context;
+        _environment = environment;
     }
 
     public async Task JoinChannel(string communityId, string channelId, string cedula)
@@ -91,6 +93,7 @@ public class ChatHub : Hub
                     content = message.Content,
                     file = message.FileUrl,
                     fileType = message.FileType,
+                    fileName = message.FileName,
                     channelId = message.ChannelId.ToString(),
                     ts = ((DateTimeOffset)message.Timestamp).ToUnixTimeMilliseconds(),
                     timestamp = message.Timestamp,
@@ -115,11 +118,15 @@ public class ChatHub : Hub
         Console.WriteLine($"[SignalR] Usuario {cedula} se unió al canal {channelId} en comunidad {communityId} - Historial: {messages.Count} mensajes");
     }
 
-    public async Task SendMessage(string content, string? fileUrl = null, string? fileType = null)
+    public async Task SendMessage(string content, string? fileData = null, string? fileType = null, string? fileName = null)
     {
-        // Validar tipos de archivo permitidos
-        if (!string.IsNullOrEmpty(fileType))
+        string? savedFileUrl = null;
+        string? savedFileName = null;
+
+        // Procesar archivo si viene en base64
+        if (!string.IsNullOrEmpty(fileData) && !string.IsNullOrEmpty(fileType))
         {
+            // Validar tipos de archivo permitidos
             var allowedTypes = new[] { "image/jpeg", "image/png", "application/pdf" };
             if (!allowedTypes.Contains(fileType.ToLower()))
             {
@@ -128,7 +135,59 @@ public class ChatHub : Hub
                 return;
             }
 
-            Console.WriteLine($"[SignalR] Validación de tipo: {fileType} ✓");
+            try
+            {
+                // Extraer datos base64 (puede venir con prefijo data:...)
+                var base64Data = fileData;
+                if (fileData.Contains(","))
+                {
+                    base64Data = fileData.Split(',')[1];
+                }
+
+                // Decodificar base64
+                var fileBytes = Convert.FromBase64String(base64Data);
+                
+                // Validar tamaño (máximo 50MB)
+                if (fileBytes.Length > 50 * 1024 * 1024)
+                {
+                    await Clients.Caller.SendAsync(ErrorEvent, "El archivo es demasiado grande. Máximo 50MB");
+                    return;
+                }
+
+                // Generar nombre único para el archivo
+                var extension = fileType.ToLower() switch
+                {
+                    "image/jpeg" => ".jpg",
+                    "image/png" => ".png",
+                    "application/pdf" => ".pdf",
+                    _ => ".bin"
+                };
+                
+                var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+                savedFileName = fileName ?? uniqueFileName;
+
+                // Crear directorio si no existe
+                var uploadsPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", "chat");
+                if (!Directory.Exists(uploadsPath))
+                {
+                    Directory.CreateDirectory(uploadsPath);
+                }
+
+                // Guardar archivo en disco
+                var filePath = Path.Combine(uploadsPath, uniqueFileName);
+                await File.WriteAllBytesAsync(filePath, fileBytes);
+
+                // URL para acceder al archivo
+                savedFileUrl = $"/uploads/chat/{uniqueFileName}";
+                
+                Console.WriteLine($"[SignalR] Archivo guardado: {savedFileUrl} ({fileBytes.Length} bytes)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SignalR] Error al procesar archivo: {ex.Message}");
+                await Clients.Caller.SendAsync(ErrorEvent, "Error al procesar el archivo");
+                return;
+            }
         }
 
         if (!_connections.TryGetValue(Context.ConnectionId, out var connectionInfo))
@@ -153,8 +212,9 @@ public class ChatHub : Hub
             Content = content ?? string.Empty,
             SenderCedula = cedula,
             ChannelId = Guid.Parse(channelId),
-            FileUrl = fileUrl,
+            FileUrl = savedFileUrl,
             FileType = fileType,
+            FileName = savedFileName,
             Timestamp = DateTime.UtcNow
         };
 
@@ -179,15 +239,17 @@ public class ChatHub : Hub
                 },
                 text = content,
                 content,
-                file = fileUrl,
+                file = savedFileUrl,
                 fileType,
+                fileName = savedFileName,
                 channelId,
                 ts = ((DateTimeOffset)message.Timestamp).ToUnixTimeMilliseconds(),
                 timestamp = message.Timestamp
             }
         });
 
-        Console.WriteLine($"[SignalR] Mensaje enviado por {cedula} al canal {channelId}: {content}");
+        Console.WriteLine($"[SignalR] Mensaje enviado por {cedula} al canal {channelId}: {content}" + 
+            (savedFileUrl != null ? $" con archivo: {savedFileUrl}" : ""));
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
