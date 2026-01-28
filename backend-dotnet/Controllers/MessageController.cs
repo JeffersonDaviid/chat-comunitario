@@ -75,6 +75,7 @@ public class MessageController : ControllerBase
                 content = m.Content,
                 file = m.FileUrl,
                 fileType = m.FileType,
+                fileName = m.FileName,
                 channelId = m.ChannelId.ToString(),
                 ts = ((DateTimeOffset)m.Timestamp).ToUnixTimeMilliseconds(),
                 timestamp = m.Timestamp

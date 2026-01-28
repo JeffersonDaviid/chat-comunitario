@@ -203,6 +203,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
                                 content: m.content || m.text || '',
                                 file: m.file || null,
                                 fileType: m.fileType || null,
+                                fileName: m.fileName || null,
                                 channelId: m.channelId || this.channelId,
                                 ts: m.ts || new Date(m.timestamp).getTime(),
                                 timestamp: m.timestamp,
