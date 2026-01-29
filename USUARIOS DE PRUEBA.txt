@@ -1,0 +1,131 @@
+USUARIOS DE PRUEBA para probar Algoritmo de cercanía
+Se puede ingresar con cedula invalida, le desactive en el back, en la presentación le activamos de nuevo
+
+Deben levantar con el Docker compose y registrar a esta dirección uno por uno
+http://localhost:5000/api/auth/register
+
+SUR
+{
+  "cedula": "1100000001",
+  "name": "Juan",
+  "lastName": "Pérez",
+  "email": "juan.sur1@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0991111111",
+  "address": "Solanda, Calle Ajaví, Sur de Quito",
+  "latitude": -0.27490,
+  "longitude": -78.54110
+}
+
+{
+  "cedula": "1100000002",
+  "name": "María",
+  "lastName": "Gómez",
+  "email": "maria.sur2@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0991111112",
+  "address": "Solanda, Av. Teniente Hugo Ortiz, Sur de Quito",
+  "latitude": -0.27610,
+  "longitude": -78.54080
+}
+
+{
+  "cedula": "1100000003",
+  "name": "Luis",
+  "lastName": "Rodríguez",
+  "email": "luis.sur3@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0991111113",
+  "address": "Solanda, Calle Quimiag, Sur de Quito",
+  "latitude": -0.27540,
+  "longitude": -78.54230
+}
+
+
+
+
+CENTRO:
+{
+  "cedula": "2200000001",
+  "name": "Ana",
+  "lastName": "Martínez",
+  "email": "ana.centro1@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0982222221",
+  "address": "Centro Histórico, Calle García Moreno",
+  "latitude": -0.21890,
+  "longitude": -78.51380
+}
+
+{
+  "cedula": "2200000002",
+  "name": "Carlos",
+  "lastName": "Torres",
+  "email": "carlos.centro2@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0982222222",
+  "address": "Centro Histórico, Calle Venezuela",
+  "latitude": -0.21940,
+  "longitude": -78.51420
+}
+
+{
+  "cedula": "2200000003",
+  "name": "Sofía",
+  "lastName": "Castillo",
+  "email": "sofia.centro3@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0982222223",
+  "address": "La Ronda, Calle Morales",
+  "latitude": -0.21820,
+  "longitude": -78.51510
+}
+
+
+
+NORTE:
+{
+  "cedula": "3300000001",
+  "name": "Miguel",
+  "lastName": "Sánchez",
+  "email": "miguel.norte1@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0973333331",
+  "address": "La Carolina, Av. República",
+  "latitude": -0.18070,
+  "longitude": -78.48300
+}
+
+{
+  "cedula": "3300000002",
+  "name": "Laura",
+  "lastName": "Vargas",
+  "email": "laura.norte2@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0973333332",
+  "address": "Iñaquito, Av. Amazonas",
+  "latitude": -0.18160,
+  "longitude": -78.48190
+}
+
+{
+  "cedula": "3300000003",
+  "name": "Diego",
+  "lastName": "Ruiz",
+  "email": "diego.norte3@mail.com",
+  "password": "Pass123!",
+  "confirmPassword": "Pass123!",
+  "phone": "0973333333",
+  "address": "La Carolina, Calle Japón",
+  "latitude": -0.17990,
+  "longitude": -78.48420
+}
+

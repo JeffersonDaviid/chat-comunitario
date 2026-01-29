@@ -34,10 +34,10 @@ public class AuthService : IAuthService
             // Limpiar y validar cédula
             dto.Cedula = dto.Cedula?.Trim() ?? "";
 
-            if (!_utilityService.ValidateEcuadorianCedula(dto.Cedula))
-            {
-                throw new ValidationException("Cédula ecuatoriana inválida");
-            }
+            // if (!_utilityService.ValidateEcuadorianCedula(dto.Cedula))
+            // {
+            //     throw new ValidationException("Cédula ecuatoriana inválida");
+            // }
 
             // Verificar si el usuario ya existe
             if (await _userRepository.ExistsByCedulaAsync(dto.Cedula))
