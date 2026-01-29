@@ -148,9 +148,26 @@ public class CommunitySoapService : ICommunitySoapService
     {
         try
         {
+            // 1. Obtener los datos del usuario que busca (Origen)
+            var currentUser = await _userRepository.GetByIdAsync(request.ExcludeCedula);
+            
+            if (currentUser == null)
+            {
+                return new GetAvailableUsersResponse
+                {
+                    Success = false,
+                    Message = "Usuario de búsqueda no encontrado",
+                    Users = new List<UserResponse>()
+                };
+            }
+
+            // 2. Obtener todos los usuarios
             var allUsers = await _userRepository.GetAllAsync();
+
+            // 3. Filtrar por Cédula y por Radio de 3km
             var availableUsers = allUsers
-                .Where(u => u.Cedula != request.ExcludeCedula)
+                .Where(u => u.Cedula != request.ExcludeCedula) // Excluir al buscador
+                .Where(u => CalcularDistanciaKm(currentUser.Latitude, currentUser.Longitude, u.Latitude, u.Longitude) <= 3.0)
                 .Select(u => new UserResponse
                 {
                     Cedula = u.Cedula,
@@ -164,7 +181,7 @@ public class CommunitySoapService : ICommunitySoapService
             return new GetAvailableUsersResponse
             {
                 Success = true,
-                Message = "Usuarios disponibles obtenidos exitosamente",
+                Message = $"Se encontraron {availableUsers.Count} usuarios en un radio de 3km",
                 Users = availableUsers
             };
         }
@@ -178,6 +195,24 @@ public class CommunitySoapService : ICommunitySoapService
             };
         }
     }
+
+    private double CalcularDistanciaKm(double lat1, double lon1, double lat2, double lon2)
+    {
+        // Radio de la Tierra en kilómetros
+        const double RadioTierra = 6371.0;
+
+        double dLat = ToRadians(lat2 - lat1);
+        double dLon = ToRadians(lon2 - lon1);
+
+        double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return RadioTierra * c;
+    }
+
+    private double ToRadians(double angle) => Math.PI * angle / 180.0;
 
     public async Task<InviteUsersResponse> InviteUsers(InviteUsersRequest request)
     {
