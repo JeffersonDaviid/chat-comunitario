@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { SoapClientService } from './soap-client.service'
+import { communityServiceUrl } from '../conf/global'
 
 export interface Community {
 	id: string
@@ -15,12 +16,7 @@ export interface Community {
 
 @Injectable({ providedIn: 'root' })
 export class CommunityService {
-	private readonly communityServiceUrl = 'http://localhost:5000/CommunityService.svc'
-
-	constructor(
-		private readonly http: HttpClient,
-		private readonly soap: SoapClientService
-	) {}
+	constructor(private readonly soap: SoapClientService) {}
 
 	// CREATE - Crear nueva comunidad
 	createCommunity(data: {
@@ -32,17 +28,17 @@ export class CommunityService {
 		const requestBody = this.soap.buildRequestBody({
 			title: data.title,
 			description: data.description,
-			ownerCedula: data.ownerCedula
+			ownerCedula: data.ownerCedula,
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'CreateCommunity', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'CreateCommunity', requestBody).pipe(
 			map((soapResponse) => {
 				console.log('[CommunityService] CreateCommunity SOAP response:', soapResponse)
 				const result = soapResponse?.CreateCommunityResult || soapResponse
 				const parsed = this.parseCommunityResponse(result)
 				console.log('[CommunityService] Parsed create response:', parsed)
 				return parsed
-			})
+			}),
 		)
 	}
 
@@ -51,12 +47,14 @@ export class CommunityService {
 		// GetAllCommunities no requiere parámetros
 		const requestBody = ''
 
-		return this.soap.call(this.communityServiceUrl, 'GetAllCommunities', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'GetAllCommunities', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.GetAllCommunitiesResult || soapResponse
-				const communities = this.extractArray(result?.Communities).map((c: any) => this.parseCommunity(c))
+				const communities = this.extractArray(result?.Communities).map((c: any) =>
+					this.parseCommunity(c),
+				)
 				return { success: true, communities }
-			})
+			}),
 		)
 	}
 
@@ -65,24 +63,25 @@ export class CommunityService {
 		console.log('[CommunityService] Fetching communities for cedula:', cedula)
 		const requestBody = this.soap.buildRequestBody({ cedula: cedula })
 
-		return this.soap.call(this.communityServiceUrl, 'GetCommunitiesByUser', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'GetCommunitiesByUser', requestBody).pipe(
 			map((soapResponse) => {
 				console.log('[CommunityService] SOAP Response:', soapResponse)
 				const result = soapResponse?.GetCommunitiesByUserResult || soapResponse
 				console.log('[CommunityService] Result:', result)
-				
-				const communitiesNode = result?.Communities?.CommunityResponse || result?.Communities
+
+				const communitiesNode =
+					result?.Communities?.CommunityResponse || result?.Communities
 				console.log('[CommunityService] Communities Node:', communitiesNode)
-				
+
 				const communities = this.extractArray(communitiesNode).map((c: any) => {
 					const parsed = this.parseCommunity(c)
 					console.log('[CommunityService] Parsed community:', parsed)
 					return parsed
 				})
-				
+
 				console.log('[CommunityService] Total communities:', communities.length)
 				return { success: true, communities }
-			})
+			}),
 		)
 	}
 
@@ -90,34 +89,34 @@ export class CommunityService {
 	getCommunityById(id: string): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({ communityId: id })
 
-		return this.soap.call(this.communityServiceUrl, 'GetCommunityById', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'GetCommunityById', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.GetCommunityByIdResult || soapResponse
 				const community = result?.Community
-				return { 
-					success: true, 
-					community: community ? this.parseCommunity(community) : null 
+				return {
+					success: true,
+					community: community ? this.parseCommunity(community) : null,
 				}
-			})
+			}),
 		)
 	}
 
 	// UPDATE - Actualizar comunidad
 	updateCommunity(
 		id: string,
-		data: { title?: string; description?: string }
+		data: { title?: string; description?: string },
 	): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({
 			communityId: id,
 			title: data.title || '',
-			description: data.description || ''
+			description: data.description || '',
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'UpdateCommunity', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'UpdateCommunity', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.UpdateCommunityResult || soapResponse
 				return this.parseCommunityResponse(result)
-			})
+			}),
 		)
 	}
 
@@ -125,11 +124,11 @@ export class CommunityService {
 	deleteCommunity(id: string): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({ communityId: id })
 
-		return this.soap.call(this.communityServiceUrl, 'DeleteCommunity', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'DeleteCommunity', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.DeleteCommunityResult || soapResponse
 				return this.parseCommunityResponse(result)
-			})
+			}),
 		)
 	}
 
@@ -140,14 +139,14 @@ export class CommunityService {
 	}): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({
 			communityId: data.communityId,
-			cedulaMember: data.memberCedula
+			cedulaMember: data.memberCedula,
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'AddMember', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'AddMember', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.AddMemberResult || soapResponse
 				return this.parseCommunityResponse(result)
-			})
+			}),
 		)
 	}
 
@@ -158,25 +157,28 @@ export class CommunityService {
 	}): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({
 			communityId: data.communityId,
-			cedulaMember: data.memberCedula
+			cedulaMember: data.memberCedula,
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'RemoveMember', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'RemoveMember', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.RemoveMemberResult || soapResponse
 				return this.parseCommunityResponse(result)
-			})
+			}),
 		)
 	}
 
 	// GET - Obtener usuarios disponibles para invitar
 	getAvailableUsers(excludeCedula: string): Observable<any> {
-		console.log('[CommunityService] getAvailableUsers called with excludeCedula:', excludeCedula)
+		console.log(
+			'[CommunityService] getAvailableUsers called with excludeCedula:',
+			excludeCedula,
+		)
 		const requestBody = this.soap.buildRequestBody({
-			excludeCedula: excludeCedula
+			excludeCedula: excludeCedula,
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'GetAvailableUsers', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'GetAvailableUsers', requestBody).pipe(
 			map((soapResponse) => {
 				console.log('[CommunityService] GetAvailableUsers SOAP response:', soapResponse)
 				const result = soapResponse?.GetAvailableUsersResult || soapResponse
@@ -184,7 +186,7 @@ export class CommunityService {
 				const parsed = this.parseAvailableUsersResponse(result)
 				console.log('[CommunityService] Parsed response:', parsed)
 				return parsed
-			})
+			}),
 		)
 	}
 
@@ -193,14 +195,14 @@ export class CommunityService {
 		// Enviar las cédulas como CSV en lugar de array para evitar problemas de serialización SOAP
 		const requestBody = this.soap.buildRequestBody({
 			communityId: communityId,
-			userCedulasCSV: userCedulas.join(',')
+			userCedulasCSV: userCedulas.join(','),
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'InviteUsers', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'InviteUsers', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.InviteUsersResult || soapResponse
 				return this.parseInviteResponse(result)
-			})
+			}),
 		)
 	}
 
@@ -224,9 +226,13 @@ export class CommunityService {
 		// Parsear canales correctamente - probar diferentes estructuras
 		let channelsNode = node?.Channels?.ChannelResponse || node?.Channels
 		console.log('[CommunityService] Raw channels node:', channelsNode)
-		
+
 		// Si channelsNode es un objeto con propiedades, convertirlo a array
-		if (channelsNode && typeof channelsNode === 'object' && !Array.isArray(channelsNode)) {
+		if (
+			channelsNode &&
+			typeof channelsNode === 'object' &&
+			!Array.isArray(channelsNode)
+		) {
 			// Puede ser un objeto con una única propiedad que contiene el array
 			const keys = Object.keys(channelsNode)
 			if (keys.length > 0 && Array.isArray(channelsNode[keys[0]])) {
@@ -240,14 +246,15 @@ export class CommunityService {
 				name: this.extractText(ch?.Name),
 				description: this.extractText(ch?.Description),
 				communityId: this.extractText(ch?.CommunityId),
-				isGeneral: this.extractText(ch?.IsGeneral) === 'true'
+				isGeneral: this.extractText(ch?.IsGeneral) === 'true',
 			}
 			console.log('[CommunityService] Parsed channel:', channel)
 			return channel
 		})
 
 		// Parsear miembros
-		const membersNode = node?.Members?.UserResponse || node?.Members?.string || node?.Members
+		const membersNode =
+			node?.Members?.UserResponse || node?.Members?.string || node?.Members
 		const members = this.extractArray(membersNode)
 
 		const community = {
@@ -257,7 +264,7 @@ export class CommunityService {
 			ownerCedula: this.extractText(node?.OwnerCedula),
 			createdAt: this.extractText(node?.CreatedAt),
 			members: members,
-			channels: channels
+			channels: channels,
 		}
 
 		console.log('[CommunityService] Final parsed community:', community)
@@ -272,7 +279,11 @@ export class CommunityService {
 	private extractArray(node: any): any[] {
 		if (!node) return []
 		// Si es un objeto vacío, retornar array vacío
-		if (typeof node === 'object' && !Array.isArray(node) && Object.keys(node).length === 0) {
+		if (
+			typeof node === 'object' &&
+			!Array.isArray(node) &&
+			Object.keys(node).length === 0
+		) {
 			return []
 		}
 		return Array.isArray(node) ? node : [node]
@@ -300,14 +311,14 @@ export class CommunityService {
 
 	private parseUsersList(node: any): any[] {
 		if (!node) return []
-		
+
 		const users = this.extractArray(node?.UserResponse || node)
-		return users.map(u => ({
+		return users.map((u) => ({
 			cedula: this.extractText(u?.Cedula),
 			name: this.extractText(u?.Name),
 			lastName: this.extractText(u?.LastName),
 			email: this.extractText(u?.Email),
-			profileImg: this.extractText(u?.ProfileImg)
+			profileImg: this.extractText(u?.ProfileImg),
 		}))
 	}
 
@@ -317,38 +328,46 @@ export class CommunityService {
 	getPendingInvitations(userCedula: string): Observable<any> {
 		console.log('[CommunityService] Getting pending invitations for:', userCedula)
 		const requestBody = this.soap.buildRequestBody({
-			userCedula: userCedula
+			userCedula: userCedula,
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'GetPendingInvitations', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'GetPendingInvitations', requestBody).pipe(
 			map((soapResponse) => {
-				console.log('[CommunityService] GetPendingInvitations SOAP response:', soapResponse)
+				console.log(
+					'[CommunityService] GetPendingInvitations SOAP response:',
+					soapResponse,
+				)
 				const result = soapResponse?.GetPendingInvitationsResult || soapResponse
 				return this.parseInvitationsResponse(result)
-			})
+			}),
 		)
 	}
 
 	// POST - Aceptar invitación
 	acceptInvitation(invitationId: string, userCedula: string): Observable<any> {
-		console.log('[CommunityService] Accepting invitation:', invitationId, 'Type:', typeof invitationId)
+		console.log(
+			'[CommunityService] Accepting invitation:',
+			invitationId,
+			'Type:',
+			typeof invitationId,
+		)
 		console.log('[CommunityService] User cedula:', userCedula)
-		
+
 		const requestBody = this.soap.buildRequestBody({
 			invitationId: invitationId,
-			userCedula: userCedula
+			userCedula: userCedula,
 		})
 		console.log('[CommunityService] Request body:', requestBody)
 
-		return this.soap.call(this.communityServiceUrl, 'AcceptInvitation', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'AcceptInvitation', requestBody).pipe(
 			map((soapResponse) => {
 				console.log('[CommunityService] AcceptInvitation SOAP response:', soapResponse)
 				const result = soapResponse?.AcceptInvitationResult || soapResponse
 				return {
 					success: this.extractText(result?.Success) === 'true',
-					message: this.extractText(result?.Message)
+					message: this.extractText(result?.Message),
 				}
-			})
+			}),
 		)
 	}
 
@@ -357,18 +376,18 @@ export class CommunityService {
 		console.log('[CommunityService] Rejecting invitation:', invitationId)
 		const requestBody = this.soap.buildRequestBody({
 			invitationId: invitationId,
-			userCedula: userCedula
+			userCedula: userCedula,
 		})
 
-		return this.soap.call(this.communityServiceUrl, 'RejectInvitation', requestBody).pipe(
+		return this.soap.call(communityServiceUrl, 'RejectInvitation', requestBody).pipe(
 			map((soapResponse) => {
 				console.log('[CommunityService] RejectInvitation SOAP response:', soapResponse)
 				const result = soapResponse?.RejectInvitationResult || soapResponse
 				return {
 					success: this.extractText(result?.Success) === 'true',
-					message: this.extractText(result?.Message)
+					message: this.extractText(result?.Message),
 				}
-			})
+			}),
 		)
 	}
 
@@ -377,27 +396,30 @@ export class CommunityService {
 		const message = this.extractText(result?.Message)
 		const invitationsNode = result?.Invitations
 		console.log('[CommunityService] Raw invitations node:', invitationsNode)
-		
+
 		// Si no hay nodo de invitaciones o está vacío, retornar array vacío
 		if (!invitationsNode) {
 			console.log('[CommunityService] No invitations node found, returning empty array')
 			return { success, message, invitations: [] }
 		}
-		
+
 		const rawArray = invitationsNode?.InvitationResponse || invitationsNode
-		
+
 		// Si el array es vacío o no es un objeto válido
-		if (!rawArray || (typeof rawArray === 'object' && Object.keys(rawArray).length === 0)) {
+		if (
+			!rawArray ||
+			(typeof rawArray === 'object' && Object.keys(rawArray).length === 0)
+		) {
 			console.log('[CommunityService] Invitations node is empty, returning empty array')
 			return { success, message, invitations: [] }
 		}
-		
+
 		const invitations = this.extractArray(rawArray)
 			.filter((inv: any) => inv && inv.Id) // Solo items con Id válido
 			.map((inv: any) => {
 				console.log('[CommunityService] Raw invitation item:', inv)
 				console.log('[CommunityService] Raw invitation Id:', inv?.Id)
-				
+
 				const parsed = {
 					id: this.extractText(inv?.Id),
 					communityId: this.extractText(inv?.CommunityId),
@@ -405,7 +427,7 @@ export class CommunityService {
 					communityDescription: this.extractText(inv?.CommunityDescription),
 					invitedByName: this.extractText(inv?.InvitedByName),
 					invitedByCedula: this.extractText(inv?.InvitedByCedula),
-					createdAt: this.extractText(inv?.CreatedAt)
+					createdAt: this.extractText(inv?.CreatedAt),
 				}
 				console.log('[CommunityService] Parsed invitation:', parsed)
 				return parsed

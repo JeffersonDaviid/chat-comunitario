@@ -2,11 +2,10 @@ import { Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
 import { BehaviorSubject, Observable, tap } from 'rxjs'
 import { map, catchError } from 'rxjs/operators'
+import { apiBaseUrl, baseFiles } from '../conf/global'
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-	private readonly authServiceUrl = 'http://localhost:5000/api/auth/'
-	private readonly baseFiles = 'http://localhost:5000'
 	private healthCheckInterval?: any
 
 	private currentUserSubject = new BehaviorSubject<any>(null)
@@ -23,7 +22,7 @@ export class AuthService {
 	login(email: string, password: string): Observable<any> {
 		const loginData = { email, password }
 
-		return this.http.post(`${this.authServiceUrl}login`, loginData).pipe(
+		return this.http.post(`${apiBaseUrl}/auth/login`, loginData).pipe(
 			map((response: any) => {
 				console.log('REST Response:', response)
 
@@ -89,7 +88,7 @@ export class AuthService {
 					}
 
 					this.http
-						.post(`${this.authServiceUrl}register`, requestData)
+						.post(`${apiBaseUrl}/auth/register`, requestData)
 						.pipe(
 							map((response: any) => this.parseRegisterResponse(response)),
 							tap((res) => {
@@ -118,7 +117,7 @@ export class AuthService {
 		}
 
 		// Sin imagen
-		return this.http.post(`${this.authServiceUrl}register`, data).pipe(
+		return this.http.post(`${apiBaseUrl}/auth/register`, data).pipe(
 			map((response: any) => this.parseRegisterResponse(response)),
 			tap((res) => {
 				if (res.success && res.user) {
@@ -185,7 +184,7 @@ export class AuthService {
 		}
 
 		// Hacer petición simple al backend
-		this.http.get(`${this.baseFiles}/`, { responseType: 'text' }).subscribe({
+		this.http.get(`${baseFiles}/`, { responseType: 'text' }).subscribe({
 			next: () => {
 				// Backend disponible, todo bien
 				console.log('[Auth] Backend está disponible')
@@ -205,7 +204,7 @@ export class AuthService {
 		if (!src) return ''
 		if (src.startsWith('http')) return src
 		if (src.startsWith('data:')) return src
-		return `${this.baseFiles}${src.startsWith('/') ? src : '/' + src}`
+		return `${baseFiles}${src.startsWith('/') ? src : '/' + src}`
 	}
 
 	// Método para verificar token (opcional)
@@ -218,7 +217,7 @@ export class AuthService {
 			})
 		}
 
-		return this.http.post(`${this.authServiceUrl}verify-token`, { token }).pipe(
+		return this.http.post(`${apiBaseUrl}/auth/verify-token`, { token }).pipe(
 			catchError((error) => {
 				console.error('Token verification failed:', error)
 				// Si el token no es válido, cerrar sesión
@@ -240,7 +239,7 @@ export class AuthService {
 			}
 
 			console.log('[Auth] Setting session with user:', normalizedUser)
-			
+
 			if (token) sessionStorage.setItem('auth_token', token)
 			if (normalizedUser) sessionStorage.setItem('user', JSON.stringify(normalizedUser))
 			if (normalizedUser?.cedula) sessionStorage.setItem('cedula', normalizedUser.cedula)

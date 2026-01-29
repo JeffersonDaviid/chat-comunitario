@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core'
-import { HttpClient } from '@angular/common/http'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
+import { channelServiceUrl } from '../conf/global'
 import { SoapClientService } from './soap-client.service'
 
 export interface Channel {
@@ -13,12 +13,7 @@ export interface Channel {
 
 @Injectable({ providedIn: 'root' })
 export class ChannelService {
-	private readonly channelServiceUrl = 'http://localhost:5000/ChannelService.svc'
-
-	constructor(
-		private http: HttpClient,
-		private soap: SoapClientService
-	) {}
+	constructor(private soap: SoapClientService) {}
 
 	// CREATE - Crear nuevo canal
 	createChannel(data: {
@@ -29,14 +24,14 @@ export class ChannelService {
 		const requestBody = this.soap.buildRequestBody({
 			name: data.name,
 			description: data.description,
-			communityId: data.communityId
+			communityId: data.communityId,
 		})
 
-		return this.soap.call(this.channelServiceUrl, 'CreateChannel', requestBody).pipe(
+		return this.soap.call(channelServiceUrl, 'CreateChannel', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.CreateChannelResult || soapResponse
 				return this.parseChannelResponse(result)
-			})
+			}),
 		)
 	}
 
@@ -44,12 +39,14 @@ export class ChannelService {
 	getChannelsByCommunity(communityId: string): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({ communityId })
 
-		return this.soap.call(this.channelServiceUrl, 'GetChannelsByCommunity', requestBody).pipe(
+		return this.soap.call(channelServiceUrl, 'GetChannelsByCommunity', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.GetChannelsByCommunityResult || soapResponse
-				const channels = this.extractArray(result?.Channels).map((c: any) => this.parseChannel(c))
+				const channels = this.extractArray(result?.Channels).map((c: any) =>
+					this.parseChannel(c),
+				)
 				return { success: true, channels }
-			})
+			}),
 		)
 	}
 
@@ -57,15 +54,15 @@ export class ChannelService {
 	getChannelById(communityId: string, channelId: string): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({ channelId })
 
-		return this.soap.call(this.channelServiceUrl, 'GetChannelById', requestBody).pipe(
+		return this.soap.call(channelServiceUrl, 'GetChannelById', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.GetChannelByIdResult || soapResponse
 				const channel = result?.Channel
-				return { 
-					success: true, 
-					channel: channel ? this.parseChannel(channel) : null 
+				return {
+					success: true,
+					channel: channel ? this.parseChannel(channel) : null,
 				}
-			})
+			}),
 		)
 	}
 
@@ -73,19 +70,19 @@ export class ChannelService {
 	updateChannel(
 		communityId: string,
 		channelId: string,
-		data: { name?: string; description?: string }
+		data: { name?: string; description?: string },
 	): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({
 			channelId: channelId,
 			name: data.name || '',
-			description: data.description || ''
+			description: data.description || '',
 		})
 
-		return this.soap.call(this.channelServiceUrl, 'UpdateChannel', requestBody).pipe(
+		return this.soap.call(channelServiceUrl, 'UpdateChannel', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.UpdateChannelResult || soapResponse
 				return this.parseChannelResponse(result)
-			})
+			}),
 		)
 	}
 
@@ -93,11 +90,11 @@ export class ChannelService {
 	deleteChannel(communityId: string, channelId: string): Observable<any> {
 		const requestBody = this.soap.buildRequestBody({ channelId })
 
-		return this.soap.call(this.channelServiceUrl, 'DeleteChannel', requestBody).pipe(
+		return this.soap.call(channelServiceUrl, 'DeleteChannel', requestBody).pipe(
 			map((soapResponse) => {
 				const result = soapResponse?.DeleteChannelResult || soapResponse
 				return this.parseChannelResponse(result)
-			})
+			}),
 		)
 	}
 
@@ -118,7 +115,7 @@ export class ChannelService {
 			name: this.extractText(node?.Name),
 			description: this.extractText(node?.Description),
 			communityId: this.extractText(node?.CommunityId),
-			createdAt: this.extractText(node?.CreatedAt)
+			createdAt: this.extractText(node?.CreatedAt),
 		}
 	}
 

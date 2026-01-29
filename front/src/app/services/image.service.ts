@@ -1,16 +1,15 @@
 import { Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
 import { Observable } from 'rxjs'
+import { apiBaseUrl } from '../conf/global'
 
 @Injectable({ providedIn: 'root' })
 export class ImageService {
-	private readonly baseUrl = 'http://localhost:5000/api/images'
-
 	constructor(private http: HttpClient) {}
 
 	// Obtener imagen de perfil por cédula
 	getProfileImage(cedula: string): Observable<Blob> {
-		return this.http.get(`${this.baseUrl}/profile/${cedula}`, {
+		return this.http.get(`${apiBaseUrl}/images/profile/${cedula}`, {
 			responseType: 'blob', // ¡IMPORTANTE! Esto le dice a Angular que espera un blob, no JSON
 		})
 	}
@@ -20,7 +19,7 @@ export class ImageService {
 		const formData = new FormData()
 		formData.append('file', file)
 
-		return this.http.post(`${this.baseUrl}/upload-profile`, formData)
+		return this.http.post(`${apiBaseUrl}/images/upload-profile`, formData)
 	}
 
 	// Generar URL para avatar por defecto
