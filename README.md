@@ -2,27 +2,7 @@
 
 Sistema de chat comunitario con soporte para múltiples comunidades, canales y mensajería en tiempo real. Proyecto migrado de Node.js/TypeScript a ASP.NET Core con PostgreSQL.
 
-## � ESTADO ACTUAL: ✅ FUNCIONAL
-
-### ✨ Correcciones Aplicadas (Enero 2026)
-
-**Problema Crítico Encontrado y Solucionado:**
-- ❌ Backend estaba configurado en puerto **3000** en `launchSettings.json`
-- ✅ Corregido a puerto **5000** 
-- ✅ Todas las URLs del frontend actualizadas correctamente
-- ✅ WebSocket, SOAP Services y REST API funcionando
-
-**Estado Final:**
-- ✅ Backend (.NET) corriendo en `http://localhost:5000`
-- ✅ Frontend (Angular) compilado en `http://localhost:4200`
-- ✅ WebSocket conectando exitosamente
-- ✅ Chat en tiempo real funcional
-
-📖 **Lee los detalles en:**
-- [`DIAGNOSTICO_SOLUCION.md`](DIAGNOSTICO_SOLUCION.md) - Problema y solución
-- [`QUICK_START.md`](QUICK_START.md) - Cómo empezar
-
-## 📋 Tabla de Contenidos
+## Tabla de Contenidos
 - [Características](#características)
 - [Tecnologías](#tecnologías)
 - [Arquitectura](#arquitectura)
@@ -33,18 +13,15 @@ Sistema de chat comunitario con soporte para múltiples comunidades, canales y m
 - [WebSocket/SignalR](#websocketsignalr)
 - [Migraciones](#migraciones)
 - [Ejecución](#ejecución)
-- [Frontend](#frontend)
-- [Desarrollo](#desarrollo)
-- [Seguridad](#seguridad)
 
 ---
 
-## ✨ Características
+## Características
 
 - ✅ **Autenticación JWT** con validación de cédula ecuatoriana
 - ✅ **Comunidades** con propietarios y miembros
 - ✅ **Canales** organizados por comunidad
-- ✅ **Mensajería en tiempo real** con SignalR ✅ FUNCIONAL
+- ✅ **Mensajería en tiempo real** con SignalR
 - ✅ **Persistencia** en PostgreSQL con Entity Framework Core
 - ✅ **Upload de imágenes** de perfil
 - ✅ **Historial de mensajes** por canal
@@ -55,7 +32,7 @@ Sistema de chat comunitario con soporte para múltiples comunidades, canales y m
 
 ---
 
-## 🛠 Tecnologías
+## Tecnologías
 
 ### Backend (.NET)
 - **ASP.NET Core 8.0** - Framework web
@@ -73,11 +50,10 @@ Sistema de chat comunitario con soporte para múltiples comunidades, canales y m
 
 ### DevOps
 - **Docker Compose** - Orquestación de PostgreSQL
-- **Git** - Control de versiones
 
 ---
 
-## 🏗 Arquitectura
+## Arquitectura
 
 ```
 ┌─────────────────┐      HTTP/HTTPS       ┌──────────────────┐
@@ -106,7 +82,7 @@ Sistema de chat comunitario con soporte para múltiples comunidades, canales y m
 
 ---
 
-## 📦 Requisitos Previos
+## Requisitos Previos
 
 ### Instalaciones Necesarias
 
@@ -128,7 +104,7 @@ Sistema de chat comunitario con soporte para múltiples comunidades, canales y m
 
 ---
 
-## 🚀 Instalación y Configuración
+## Instalación y Configuración
 
 ### 1. Clonar el Repositorio
 
@@ -202,7 +178,7 @@ npm install @microsoft/signalr
 
 ---
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 chat-comunitario/
@@ -255,7 +231,7 @@ chat-comunitario/
 
 ---
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Autenticación (`/api/auth`)
 
@@ -421,7 +397,7 @@ Eliminar canal.
 
 ---
 
-## 🔌 WebSocket/SignalR
+## WebSocket/SignalR
 
 ### Conexión (Frontend)
 
@@ -527,7 +503,7 @@ connection.on('Error', (error) => {
 
 ---
 
-## 🗄 Migraciones
+## Migraciones
 
 ### Crear Nueva Migración
 
@@ -556,7 +532,7 @@ dotnet ef migrations remove
 
 ---
 
-## ▶️ Ejecución
+## Ejecución
 
 ### Opción 1: Desarrollo
 
@@ -591,304 +567,3 @@ cd front
 npm run build
 # Archivos en front/dist/
 ```
-
----
-
-## 🌐 Frontend
-
-### Servicios a Actualizar
-
-1. **`websocket.service.ts`** → Cambiar de `ws` a `@microsoft/signalr`
-2. **URLs de API** → Cambiar de `http://localhost:3000/api/...` (si es necesario)
-
-### Instalación SignalR Client
-
-```bash
-cd front
-npm install @microsoft/signalr
-```
-
-### Ejemplo de Integración
-
-```typescript
-import { Injectable } from '@angular/core';
-import * as signalR from '@microsoft/signalr';
-import { BehaviorSubject, Observable } from 'rxjs';
-
-@Injectable({ providedIn: 'root' })
-export class WebsocketService {
-  private connection: signalR.HubConnection;
-  private messagesSubject = new BehaviorSubject<any>(null);
-  private statusSubject = new BehaviorSubject<boolean>(false);
-
-  constructor() {
-    this.connection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:3000/ws', {
-        accessTokenFactory: () => localStorage.getItem('auth_token') || ''
-      })
-      .withAutomaticReconnect()
-      .build();
-
-    this.connection.on('ReceiveMessage', (msg) => {
-      this.messagesSubject.next(msg);
-    });
-
-    this.connection.onreconnected(() => {
-      this.statusSubject.next(true);
-    });
-
-    this.connection.onclose(() => {
-      this.statusSubject.next(false);
-    });
-  }
-
-  async setIdentity(identity: any, reconnect: boolean = false) {
-    if (reconnect && this.connection.state === 'Disconnected') {
-      await this.connection.start();
-      this.statusSubject.next(true);
-    }
-
-    await this.connection.invoke(
-      'JoinChannel',
-      identity.communityId,
-      identity.channelId,
-      identity.cedula
-    );
-  }
-
-  async send(content: string) {
-    await this.connection.invoke('SendMessage', content);
-  }
-
-  messages$(): Observable<any> {
-    return this.messagesSubject.asObservable();
-  }
-
-  status$(): Observable<boolean> {
-    return this.statusSubject.asObservable();
-  }
-
-  close() {
-    this.connection.stop();
-  }
-}
-```
-
----
-
-## 👨‍💻 Desarrollo
-
-### Comandos Útiles
-
-**Backend:**
-```bash
-# Compilar
-dotnet build
-
-# Ejecutar con hot-reload
-dotnet watch run
-
-# Tests (si existen)
-dotnet test
-
-# Limpiar
-dotnet clean
-```
-
-**Frontend:**
-```bash
-# Desarrollo con hot-reload
-npm start
-
-# Build de producción
-npm run build
-
-# Tests
-npm test
-
-# Linting
-npm run lint
-```
-
-**Docker:**
-```bash
-# Iniciar PostgreSQL
-docker-compose up -d
-
-# Detener PostgreSQL
-docker-compose down
-
-# Ver logs
-docker-compose logs -f postgres
-
-# Reiniciar PostgreSQL
-docker-compose restart postgres
-
-# Eliminar datos (⚠️ PELIGRO)
-docker-compose down -v
-```
-
-### Base de Datos
-
-**Conectar a PostgreSQL:**
-```bash
-docker exec -it chatcomunitario-postgres psql -U postgres -d chatcomunitario
-```
-
-**Comandos PostgreSQL:**
-```sql
--- Listar tablas
-\dt
-
--- Ver estructura de tabla
-\d "Users"
-
--- Consultas
-SELECT * FROM "Users";
-SELECT * FROM "Communities";
-SELECT * FROM "Channels";
-SELECT * FROM "Messages";
-
--- Salir
-\q
-```
-
----
-
-## 🔒 Seguridad
-
-### Buenas Prácticas Implementadas
-
-1. **JWT con clave segura**: Cambiar `Jwt:Key` en producción
-2. **Hash de contraseñas**: BCrypt con salt automático
-3. **Validación de cédulas**: Algoritmo de verificación ecuatoriano
-4. **CORS configurado**: Solo permite origen específico
-5. **Autenticación en endpoints**: `[Authorize]` en controladores
-6. **Validación de modelos**: Data Annotations en DTOs
-7. **SQL Injection protegido**: Entity Framework Core (ORM)
-8. **WebSocket autenticado**: JWT en SignalR
-
-### Recomendaciones para Producción
-
-1. **Variables de Entorno**:
-   ```bash
-   export JWT_KEY="clave-super-secreta-de-al-menos-32-caracteres"
-   export DB_PASSWORD="contraseña-segura-postgres"
-   ```
-
-2. **HTTPS**:
-   - Configurar certificado SSL/TLS
-   - Forzar HTTPS en `Program.cs`
-
-3. **Rate Limiting**:
-   - Implementar límite de peticiones por IP
-
-4. **Logging**:
-   - Configurar Serilog o similar
-   - Monitoreo de errores
-
-5. **Backup Base de Datos**:
-   ```bash
-   docker exec chatcomunitario-postgres pg_dump -U postgres chatcomunitario > backup.sql
-   ```
-
----
-
-## 📝 Notas de Migración
-
-### Diferencias clave Node.js → .NET
-
-| Aspecto | Node.js/TypeScript | ASP.NET Core/.NET |
-|---------|-------------------|-------------------|
-| **WebSocket** | `ws` library | SignalR |
-| **ORM** | Simulado en memoria | Entity Framework Core |
-| **Base de Datos** | JSON en archivo | PostgreSQL real |
-| **Autenticación** | JWT manual | JWT Bearer integrado |
-| **Validación** | Zod schemas | Data Annotations |
-| **Hash** | bcryptjs | BCrypt.Net |
-| **Servidor** | Express.js | Kestrel (built-in) |
-| **Tipado** | TypeScript | C# (fuertemente tipado) |
-
-### Ventajas de .NET
-
-- ✅ Rendimiento superior (compilado AOT)
-- ✅ Tipado nativo fuerte
-- ✅ SignalR más robusto que `ws`
-- ✅ Entity Framework Core (migraciones, relaciones)
-- ✅ Mejor integración con Azure
-- ✅ Menos dependencias externas
-
----
-
-## 🤝 Contribuciones
-
-```bash
-git checkout -b feature/nueva-funcionalidad
-git commit -m "feat: descripción de la funcionalidad"
-git push origin feature/nueva-funcionalidad
-```
-
----
-
-## 📄 Licencia
-
-ISC License
-
----
-
-## 👥 Autores
-
-- **Jefferson Chileno** - Desarrollo inicial (Node.js)
-- **Equipo de Desarrollo** - Migración a .NET Core
-
----
-
-## 🆘 Troubleshooting
-
-### Error: "Cannot connect to PostgreSQL"
-```bash
-# Verificar que Docker está corriendo
-docker ps
-
-# Reiniciar PostgreSQL
-docker-compose restart postgres
-
-# Verificar logs
-docker-compose logs postgres
-```
-
-### Error: "Entity Framework migration failed"
-```bash
-# Eliminar migraciones
-rm -rf Migrations/
-
-# Recrear migración
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
-
-### Error: "SignalR connection failed"
-- Verificar que backend está corriendo en puerto 3000
-- Verificar CORS en `Program.cs`
-- Verificar token JWT válido
-
-### Error: "Port 5432 already in use"
-```bash
-# Ver qué proceso usa el puerto
-netstat -ano | findstr :5432  # Windows
-lsof -i :5432  # Linux/Mac
-
-# Detener PostgreSQL local si existe
-# O cambiar puerto en docker-compose.yml
-```
-
----
-
-## 📞 Contacto
-
-- **Repositorio:** https://github.com/JeffersonDaviid/chat-comunitario
-- **Issues:** https://github.com/JeffersonDaviid/chat-comunitario/issues
-
----
-
-**¡Listo para usar! 🚀**
